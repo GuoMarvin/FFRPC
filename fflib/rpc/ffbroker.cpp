@@ -83,7 +83,10 @@ int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socke
     LOGTRACE((BROKER, "ffbroker_t::handle_slave_register begin"));
     session_data_t* psession = new session_data_t(alloc_id());
     sock_->set_data(psession);
-    m_slave_broker_sockets[psession->get_node_id()] = sock_;
+    slave_broker_info_t& slave_broker_info = m_slave_broker_sockets[psession->get_node_id()];
+    slave_broker_info.host = msg_.host;
+    slave_broker_info.port = msg_.port;
+    slave_broker_info.sock = sock_;
     sync_all_register_info(sock_);
     LOGTRACE((BROKER, "ffbroker_t::handle_slave_register end ok"));
     return 0;
@@ -144,15 +147,23 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         msg.m_broker_client_info[it->first].service_name        = it->second.service_name;
         msg.m_broker_client_info[it->first].service_id          = it->second.service_id;
     }
-    //! 给所有已注册的broker slave节点推送所有的消息
-    for (map<uint32_t, socket_ptr_t>::iterator it = m_slave_broker_sockets.begin();
+    //! 把所有已注册的broker slave节点赋值到消息
+    for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
          it != m_slave_broker_sockets.end(); ++it)
     {
-        if (sock_ == it->second)
+        msg.m_slave_broker_info[it->first].host = it->second.host;
+        msg.m_slave_broker_info[it->first].port = it->second.port;
+    }
+    
+    //! 给所有已注册的broker slave节点推送所有的消息
+    for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
+         it != m_slave_broker_sockets.end(); ++it)
+    {
+        if (sock_ == it->second.sock)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
-        send_msg(it->second, msg);
+        send_msg(it->second.sock, msg);
     }
     //! 给所有已注册的broker client节点推送所有的消息
     for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();

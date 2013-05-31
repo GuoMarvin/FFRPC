@@ -19,6 +19,8 @@ class ffbroker_t: public msg_handler_i
 {
     //! 每个连接都要分配一个session，用于记录该socket，对应的信息
     struct session_data_t;
+    //! 记录每个broker slave 的接口信息
+    struct slave_broker_info_t;
     //! 记录每个broker client 的接口信息
     struct broker_client_info_t;
 public:
@@ -58,7 +60,7 @@ private:
     //! 用于绑定回调函数
     ffslot_t                                m_ffslot;
     //! 记录所有的broker socket对应node id
-    map<uint32_t, socket_ptr_t>             m_slave_broker_sockets;
+    map<uint32_t, slave_broker_info_t>      m_slave_broker_sockets;
     //! 记录所有的消息名称对应的消息id值
     map<string, uint32_t>                   m_msg2id;
     //! 记录所有服务/接口信息
@@ -88,6 +90,18 @@ struct ffbroker_t::broker_client_info_t
     uint16_t service_id;
     socket_ptr_t sock;
 };
+//! 记录每个broker slave 的接口信息
+struct ffbroker_t::slave_broker_info_t
+{
+    slave_broker_info_t():
+        port(0),
+        sock(NULL)
+    {}
+    string          host;
+    int32_t         port;
+    socket_ptr_t    sock;
+};
+
 }
 
 #endif

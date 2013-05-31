@@ -900,12 +900,14 @@ struct register_slave_broker_t
     {
         virtual string encode()
         {
-            return (init_encoder()).get_buff() ;
+            return (init_encoder() << host << port).get_buff() ;
         }
         virtual void decode(const string& src_buff_)
         {
-            init_decoder(src_buff_);
+            init_decoder(src_buff_) >> host >> port;
         }
+        string          host;
+        int32_t         port;
     };
 };
 
@@ -931,6 +933,21 @@ struct register_broker_client_t
 
 struct broker_sync_all_registered_data_t
 {
+    //! 记录每个broker slave 的接口信息
+    struct slave_broker_info_t: public codec_helper_i
+    {
+        virtual void encode(bin_encoder_t& be_) const
+        {
+            be_ << host << port;
+        }
+        virtual void decode(bin_decoder_t& bd_)
+        {
+            bd_ >> host >> port;
+        }
+        string          host;
+        int32_t         port;
+    };
+
     struct broker_client_info_t: public codec_helper_i
     {
         virtual void encode(bin_encoder_t& be_) const
@@ -961,8 +978,10 @@ struct broker_sync_all_registered_data_t
         }
         uint32_t                                node_id;//! 被分配的node id
         map<string, uint32_t>                   msg2id; //! 消息名称对应的消息id 值
+        //!记录所有的broker slave 信息
+        map<uint32_t, slave_broker_info_t>      m_slave_broker_info;//! node id -> broker slave
         //! 记录所有服务/接口信息
-        map<uint32_t, broker_client_info_t>     m_broker_client_info;//! service id -> service
+        map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
     };
 };
 
