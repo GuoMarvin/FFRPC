@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include <map>
+#include <set>
 using namespace std;
 
 #include "net/message.h"
@@ -38,15 +39,54 @@ struct codec_helper_i
 template<typename T>
 struct option_t: public shared_ptr_t<T>
 {
-    option_t()
+    option_t():
+        data(NULL)
     {}
-    option_t(const option_t&);
-    void init()
+    option_t(const option_t& src_):
+        data(NULL)
     {
-        shared_ptr_t<T>::reset();
-        shared_ptr_t<T>::operator=(new T());
+        if (src_->data)
+        {
+            data = new T(src_->data);
+        }
     }
+    ~option_t()
+    {
+        release();
+    }
+    void release()
+    {
+        if (data)
+        {
+            delete data;
+            data = NULL;
+        }
+    }
+    void reset(T* p = NULL)
+    {
+        release();
+        data = p;
+    }
+    T* get()        { return data; }
+    T* operator->() { return data; }
+    T* operator*()  { return data; }
+    option_t& operator=(const option_t& src_)
+    {
+        release();
+        if (src_->data)
+        {
+            data = new T(src_->data);
+        }
+        return *this;
+    }
+    T* data;
 };
+
+#define GEN_CODE_DECODE(X) \
+    bin_decoder_t& operator >> (X& dest_)       \
+    {                                           \
+        return copy_value(&dest_, sizeof(X));   \
+    }
 
 class bin_decoder_t
 {
@@ -64,11 +104,15 @@ public:
         return *this;
     }
 
-    template<typename T>
-    bin_decoder_t& operator >> (T& dest_)
-    {
-        return copy_value(&dest_, sizeof(T));
-    }
+    GEN_CODE_DECODE(bool)
+    GEN_CODE_DECODE(int8_t)
+    GEN_CODE_DECODE(uint8_t)
+    GEN_CODE_DECODE(int16_t)
+    GEN_CODE_DECODE(uint16_t)
+    GEN_CODE_DECODE(int32_t)
+    GEN_CODE_DECODE(uint32_t)
+    GEN_CODE_DECODE(int64_t)
+    GEN_CODE_DECODE(uint64_t)
 
     bin_decoder_t& operator >> (string& dest_)
     {
@@ -86,6 +130,34 @@ public:
             T tmp;
             (*this) >> tmp;
             dest_vt_.push_back(tmp);
+        }
+        return *this;
+    }
+    template<typename T>
+    bin_decoder_t& operator >>(list<T>& dest_vt_)
+    {
+        uint32_t vt_size = 0;
+        copy_value(&vt_size, sizeof(vt_size));
+
+        for (size_t i = 0; i < vt_size; ++i)
+        {
+            T tmp;
+            (*this) >> tmp;
+            dest_vt_.push_back(tmp);
+        }
+        return *this;
+    }
+    template<typename T>
+    bin_decoder_t& operator >>(set<T>& dest_vt_)
+    {
+        uint32_t vt_size = 0;
+        copy_value(&vt_size, sizeof(vt_size));
+
+        for (size_t i = 0; i < vt_size; ++i)
+        {
+            T tmp;
+            (*this) >> tmp;
+            dest_vt_.insert(tmp);
         }
         return *this;
     }
@@ -114,13 +186,18 @@ public:
     template<typename T>
     bin_decoder_t& operator >>(option_t<T>& dest_)
     {
+        uint8_t flag = 0;
         try{
-            dest_.init();
-            *this << *dest_;
+            *this >> flag;
         }
         catch(exception& e_)
         {
-            dest_.reset();
+            return *this;
+        }
+        if (flag)
+        {
+            dest_.reset(new T());
+            *this << *dest_;   
         }
         return *this;
     }
@@ -157,6 +234,12 @@ private:
     size_t       m_remaindered;
 };
 
+#define GEN_CODE_ENCODE(X)                                      \
+    bin_encoder_t& operator << (const X& var_)                  \
+    {                                                           \
+        return copy_value((const char*)(&var_), sizeof(var_));  \
+    }
+
 class bin_encoder_t
 {
 public:
@@ -168,11 +251,15 @@ public:
 
     const string& get_buff() const { return m_dest_buff; }
 
-    template<typename T>
-    bin_encoder_t& operator << (const T& var_)
-    {
-        return copy_value((const char*)(&var_), sizeof(var_));
-    }
+    GEN_CODE_ENCODE(bool)
+    GEN_CODE_ENCODE(int8_t)
+    GEN_CODE_ENCODE(uint8_t)
+    GEN_CODE_ENCODE(int16_t)
+    GEN_CODE_ENCODE(uint16_t)
+    GEN_CODE_ENCODE(int32_t)
+    GEN_CODE_ENCODE(uint32_t)
+    GEN_CODE_ENCODE(int64_t)
+    GEN_CODE_ENCODE(uint64_t)
     
     bin_encoder_t& operator << (const string& str_)
     {
@@ -188,6 +275,30 @@ public:
         for (uint32_t i = 0; i < vt_size; ++i)
         {
             (*this) << src_vt_[i];
+        }
+        return *this;
+    }
+    template<typename T>
+    bin_encoder_t& operator <<(const list<T>& src_vt_)
+    {
+        uint32_t vt_size = (uint32_t)src_vt_.size();
+        copy_value((const char*)(&vt_size), sizeof(vt_size));
+        typename list<T>::iterator it = src_vt_.begin();
+        for (; it != src_vt_.end(); ++it)
+        {
+            (*this) << *it;
+        }
+        return *this;
+    }
+    template<typename T>
+    bin_encoder_t& operator <<(const set<T>& src_vt_)
+    {
+        uint32_t vt_size = (uint32_t)src_vt_.size();
+        copy_value((const char*)(&vt_size), sizeof(vt_size));
+        typename set<T>::iterator it = src_vt_.begin();
+        for (; it != src_vt_.end(); ++it)
+        {
+            (*this) << *it;
         }
         return *this;
     }
@@ -212,9 +323,16 @@ public:
     template<typename T>
     bin_encoder_t& operator <<(option_t<T>& dest_)
     {
+        uint8_t flag = 0;
         if (dest_.get())
         {
+            flag = 1;
+            *this << flag;
             *this << *(dest_);
+        }
+        else
+        {
+            *this << flag;
         }
         return *this;
     }
@@ -643,16 +761,16 @@ struct sync_all_service_t
 
 struct push_init_data_t
 {
-    struct id_info_t//: public codec_helper_i
+    struct id_info_t: public codec_helper_i
     {
-        /*virtual void encode(bin_encoder_t& be_) const
+        virtual void encode(bin_encoder_t& be_) const
         {
             be_ << sgid << sid << node_id;
         }
         virtual void decode(bin_decoder_t& bd_)
         {
             bd_ >> sgid >> sid >> node_id;
-        }*/
+        }
         uint16_t sgid;
         uint16_t sid;
         uint16_t node_id;
@@ -775,6 +893,99 @@ public:
 };
 
 typedef bool_ret_msg_t ffmsg_bool_t;
+
+struct register_slave_broker_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        virtual string encode()
+        {
+            return (init_encoder()).get_buff() ;
+        }
+        virtual void decode(const string& src_buff_)
+        {
+            init_decoder(src_buff_);
+        }
+    };
+};
+
+struct register_broker_client_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        virtual string encode()
+        {
+            return (init_encoder() << service_name << service_id << bind_broker_id << msg_names).get_buff() ;
+        }
+        virtual void decode(const string& src_buff_)
+        {
+            init_decoder(src_buff_) >> service_name >> service_id >> bind_broker_id >> msg_names;
+        }
+        string                      service_name;
+        uint16_t                    service_id;
+        uint32_t                    bind_broker_id;//! 是否需要绑定到特定的broker上
+        std::set<string>            msg_names;
+    };
+};
+
+
+struct broker_sync_all_registered_data_t
+{
+    struct broker_client_info_t: public codec_helper_i
+    {
+        virtual void encode(bin_encoder_t& be_) const
+        {
+            be_ << bind_broker_id << service_name << service_id;
+        }
+        virtual void decode(bin_decoder_t& bd_)
+        {
+            bd_ >> bind_broker_id >> service_name >> service_id;
+        }
+        //! 被绑定的节点broker node id
+        uint32_t bind_broker_id;
+        string   service_name;
+        uint16_t service_id;
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        out_t():
+            node_id(0)
+        {}
+        virtual string encode()
+        {
+            return (init_encoder() << node_id << msg2id << m_broker_client_info).get_buff() ;
+        }
+        virtual void decode(const string& src_buff_)
+        {
+            init_decoder(src_buff_) >> node_id >> msg2id >> m_broker_client_info;
+        }
+        uint32_t                                node_id;//! 被分配的node id
+        map<string, uint32_t>                   msg2id; //! 消息名称对应的消息id 值
+        //! 记录所有服务/接口信息
+        map<uint32_t, broker_client_info_t>     m_broker_client_info;//! service id -> service
+    };
+};
+
+struct broker_route_t//!broker 转发消息
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        virtual string encode()
+        {
+            return (init_encoder() << node_id << msg_id << body).get_buff() ;
+        }
+        virtual void decode(const string& src_buff_)
+        {
+            init_decoder(src_buff_) >> node_id >> msg_id >> body;
+        }
+        uint32_t                    node_id;//! 需要转发到哪个节点上
+        uint32_t                    msg_id;//! 调用的是哪个接口
+        string                      body;
+    };
+};
+
 }
+
+
 
 #endif
