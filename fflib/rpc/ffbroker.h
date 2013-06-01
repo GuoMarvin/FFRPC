@@ -17,80 +17,80 @@ namespace ff
 {
 class ffbroker_t: public msg_handler_i
 {
-    //! Ã¿¸öÁ¬½Ó¶¼Òª·ÖÅäÒ»¸ösession£¬ÓÃÓÚ¼ÇÂ¼¸Ãsocket£¬¶ÔÓ¦µÄÐÅÏ¢
+    //! Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½Ó¶ï¿½Òªï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½sessionï¿½ï¿½ï¿½ï¿½ï¿½Ú¼ï¿½Â¼ï¿½ï¿½socketï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Ï¢
     struct session_data_t;
-    //! ¼ÇÂ¼Ã¿¸öbroker slave µÄ½Ó¿ÚÐÅÏ¢
+    //! ï¿½ï¿½Â¼Ã¿ï¿½ï¿½broker slave ï¿½Ä½Ó¿ï¿½ï¿½ï¿½Ï¢
     struct slave_broker_info_t;
-    //! ¼ÇÂ¼Ã¿¸öbroker client µÄ½Ó¿ÚÐÅÏ¢
+    //! ï¿½ï¿½Â¼Ã¿ï¿½ï¿½broker client ï¿½Ä½Ó¿ï¿½ï¿½ï¿½Ï¢
     struct broker_client_info_t;
 public:
     ffbroker_t();
     virtual ~ffbroker_t();
 
-    //! µ±ÓÐÁ¬½Ó¶Ï¿ª£¬Ôò±»»Øµ÷
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¶Ï¿ï¿½ï¿½ï¿½ï¿½ò±»»Øµï¿½
     int handle_broken(socket_ptr_t sock_);
-    //! µ±ÓÐÏûÏ¢µ½À´£¬±»»Øµ÷
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½
     int handle_msg(const message_t& msg_, socket_ptr_t sock_);
 
     int open(const string& opt_);
-    //! ·ÖÅäÒ»¸önodeid
+    //! ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½nodeid
     uint32_t alloc_id();
 private:
-    //! µ±ÓÐÁ¬½Ó¶Ï¿ª£¬Ôò±»»Øµ÷
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¶Ï¿ï¿½ï¿½ï¿½ï¿½ò±»»Øµï¿½
     int handle_broken_impl(socket_ptr_t sock_);
-    //! µ±ÓÐÏûÏ¢µ½À´£¬±»»Øµ÷
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½
     int handle_msg_impl(const message_t& msg_, socket_ptr_t sock_);
-    //! Í¬²½ËùÓÐµÄµ±Ç°µÄ×¢²á½Ó¿ÚÐÅÏ¢
+    //! Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ÐµÄµï¿½Ç°ï¿½ï¿½×¢ï¿½ï¿½Ó¿ï¿½ï¿½ï¿½Ï¢
     int sync_all_register_info(socket_ptr_t sock_);
-    //! ´¦Àíborker slave ×¢²áÏûÏ¢
+    //! ï¿½ï¿½ï¿½ï¿½borker slave ×¢ï¿½ï¿½ï¿½ï¿½Ï¢
     int handle_slave_register(register_slave_broker_t::in_t& msg_, socket_ptr_t sock_);
-    //! ´¦Àíborker client ×¢²áÏûÏ¢
+    //! ï¿½ï¿½ï¿½ï¿½borker client ×¢ï¿½ï¿½ï¿½ï¿½Ï¢
     int handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_);
-    //! ×ª·¢ÏûÏ¢
+    //! ×ªï¿½ï¿½ï¿½ï¿½Ï¢
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
-    //! ·¢ËÍÊý¾Ý TODO
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ TODO
     template<typename T>
-    int send_msg(socket_ptr_t sock_, T& msg_) { return 0; }
+    int send_msg(socket_ptr_t sock_, uint16_t cmd_, T& msg_) { return 0; }
 private:
-    //! ÓÃÓÚ·ÖÅänodeid
+    //! ï¿½ï¿½ï¿½Ú·ï¿½ï¿½ï¿½nodeid
     uint32_t                                m_node_id_index;
-    //! ¼ÇÂ¼ËùÓÐ×¢²áµ½´Ë½ÚµãÉÏµÄÁ¬½Ó
+    //! ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½×¢ï¿½áµ½ï¿½Ë½Úµï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½
     task_queue_t                            m_tq;
     thread_t                                m_thread;
-    //! ÓÃÓÚ°ó¶¨»Øµ÷º¯Êý
+    //! ï¿½ï¿½ï¿½Ú°ó¶¨»Øµï¿½ï¿½ï¿½ï¿½ï¿½
     ffslot_t                                m_ffslot;
-    //! ¼ÇÂ¼ËùÓÐµÄbroker socket¶ÔÓ¦node id
+    //! ï¿½ï¿½Â¼ï¿½ï¿½ï¿½Ðµï¿½broker socketï¿½ï¿½Ó¦node id
     map<uint32_t, slave_broker_info_t>      m_slave_broker_sockets;
-    //! ¼ÇÂ¼ËùÓÐµÄÏûÏ¢Ãû³Æ¶ÔÓ¦µÄÏûÏ¢idÖµ
+    //! ï¿½ï¿½Â¼ï¿½ï¿½ï¿½Ðµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½Æ¶ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Ï¢idÖµ
     map<string, uint32_t>                   m_msg2id;
-    //! ¼ÇÂ¼ËùÓÐ·þÎñ/½Ó¿ÚÐÅÏ¢
+    //! ï¿½ï¿½Â¼ï¿½ï¿½ï¿½Ð·ï¿½ï¿½ï¿½/ï¿½Ó¿ï¿½ï¿½ï¿½Ï¢
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
 };
 
-//! Ã¿¸öÁ¬½Ó¶¼Òª·ÖÅäÒ»¸ösession£¬ÓÃÓÚ¼ÇÂ¼¸Ãsocket£¬¶ÔÓ¦µÄÐÅÏ¢
+//! Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½Ó¶ï¿½Òªï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½sessionï¿½ï¿½ï¿½ï¿½ï¿½Ú¼ï¿½Â¼ï¿½ï¿½socketï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Ï¢
 struct ffbroker_t::session_data_t
 {
     session_data_t(uint32_t n = 0):
         node_id(n)
     {}
     uint32_t get_node_id() { return node_id; }
-    //! ±»·ÖÅäµÄÎ¨Ò»µÄ½Úµãid
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¨Ò»ï¿½Ä½Úµï¿½id
     uint32_t node_id;
 };
-//! ¼ÇÂ¼Ã¿¸öbroker client µÄ½Ó¿ÚÐÅÏ¢
+//! ï¿½ï¿½Â¼Ã¿ï¿½ï¿½broker client ï¿½Ä½Ó¿ï¿½ï¿½ï¿½Ï¢
 struct ffbroker_t::broker_client_info_t
 {
     broker_client_info_t():
         bind_broker_id(0),
         sock(NULL)
     {}
-    //! ±»°ó¶¨µÄ½Úµãbroker node id
+    //! ï¿½ï¿½ï¿½ó¶¨µÄ½Úµï¿½broker node id
     uint32_t bind_broker_id;
     string   service_name;
     uint16_t service_id;
     socket_ptr_t sock;
 };
-//! ¼ÇÂ¼Ã¿¸öbroker slave µÄ½Ó¿ÚÐÅÏ¢
+//! ï¿½ï¿½Â¼Ã¿ï¿½ï¿½broker slave ï¿½Ä½Ó¿ï¿½ï¿½ï¿½Ï¢
 struct ffbroker_t::slave_broker_info_t
 {
     slave_broker_info_t():

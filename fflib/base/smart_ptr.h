@@ -2,6 +2,7 @@
 #define _SHARED_PTR_H_
 
 #include "atomic_op.h"
+#include "base/lock.h"
 #include <assert.h>
 #include <stdexcept>
 using namespace std;

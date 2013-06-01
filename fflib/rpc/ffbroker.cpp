@@ -12,7 +12,7 @@ ffbroker_t::~ffbroker_t()
 
 }
 
-//! ╥жеДр╩╦Жnodeid
+//! О©╫О©╫О©╫О©╫р╩О©╫О©╫nodeid
 uint32_t ffbroker_t::alloc_id()
 {
     return ++m_node_id_index;
@@ -20,12 +20,12 @@ uint32_t ffbroker_t::alloc_id()
 
 int ffbroker_t::open(const string& opt_)
 {
-    //! ╟С╤╗cmd ╤тс╕╣д╩ь╣В╨╞йЩ
+    //! О©╫О©╫cmd О©╫О©╫с╕О©╫д╩ь╣О©╫О©╫О©╫О©╫О©╫
     m_ffslot.bind(BROKER_SLAVE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_slave_register, this))
             .bind(BROKER_CLIENT_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register, this))
             .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_route_msg, this));
 
-    //! хннЯ╤сап╟С╤╗оъЁл
+    //! О©╫О©╫О©╫О©╫О©╫О©╫п╟О©╫О©╫ъЁО©╫
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
     return 0;
 }
@@ -40,7 +40,7 @@ int ffbroker_t::handle_msg(const message_t& msg_, socket_ptr_t sock_)
     m_tq.produce(task_binder_t::gen(&ffbroker_t::handle_msg_impl, this, msg_, sock_));
     return 0;
 }
-//! ╣╠спа╛╫с╤о©╙ё╛тР╠╩╩ь╣В
+//! О©╫О©╫О©╫О©╫О©╫О©╫О©╫с╤о©О©╫О©╫О©╫О©╫Р╠╩╩ь╣О©╫
 int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
 {
     if (NULL == sock_->get_data<session_data_t>())
@@ -55,7 +55,7 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
     sock_->safe_delete();
     return 0;
 }
-//! ╣╠споШо╒╣╫ю╢ё╛╠╩╩ь╣В
+//! О©╫О©╫О©╫О©╫О©╫О©╫о╒О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫ь╣О©╫
 int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 {
     uint16_t cmd = msg_.get_cmd();
@@ -77,7 +77,7 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
     return -1;
 }
 
-//! ╢╕юМborker slave в╒╡АоШо╒
+//! О©╫О©╫О©╫О©╫borker slave в╒О©╫О©╫О©╫О©╫о╒
 int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_slave_register begin"));
@@ -92,7 +92,7 @@ int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socke
     return 0;
 }
 
-//! ╢╕юМborker client в╒╡АоШо╒
+//! О©╫О©╫О©╫О©╫borker client в╒О©╫О©╫О©╫О©╫о╒
 int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_client_register begin"));
@@ -134,7 +134,7 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
     return 0;
 }
 
-//! м╛╡╫кЫсп╣д╣╠г╟╣дв╒╡А╫с©зпео╒
+//! м╛О©╫О©╫О©╫О©╫О©╫п╣д╣О©╫г╟О©╫О©╫в╒О©╫О©╫с©О©╫О©╫О©╫о╒
 int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info begin"));
@@ -147,7 +147,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         msg.m_broker_client_info[it->first].service_name        = it->second.service_name;
         msg.m_broker_client_info[it->first].service_id          = it->second.service_id;
     }
-    //! ╟якЫспряв╒╡А╣дbroker slave╫з╣Ц╦Ёж╣╣╫оШо╒
+    //! О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫в╒О©╫О©╫О©╫broker slaveО©╫з╣Ц╦Ёж╣О©╫О©╫О©╫О©╫о╒
     for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
          it != m_slave_broker_sockets.end(); ++it)
     {
@@ -155,7 +155,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         msg.m_slave_broker_info[it->first].port = it->second.port;
     }
     
-    //! ╦ЬкЫспряв╒╡А╣дbroker slave╫з╣ЦмфкмкЫсп╣доШо╒
+    //! О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫в╒О©╫О©╫О©╫broker slaveО©╫з╣О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫п╣О©╫О©╫О©╫о╒
     for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
          it != m_slave_broker_sockets.end(); ++it)
     {
@@ -163,9 +163,9 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
-        send_msg(it->second.sock, msg);
+        send_msg(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
     }
-    //! ╦ЬкЫспряв╒╡А╣дbroker client╫з╣ЦмфкмкЫсп╣доШо╒
+    //! О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫в╒О©╫О©╫О©╫broker clientО©╫з╣О©╫О©╫О©╫О©╫О©╫О©╫О©╫О©╫п╣О©╫О©╫О©╫о╒
     for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
          it == m_broker_client_info.end(); ++it)
     {
@@ -173,13 +173,13 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
-        send_msg(it->second.sock, msg);
+        send_msg(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
     }
     LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info end ok"));
     return 0;
 }
 
-//! в╙╥╒оШо╒
+//! в╙О©╫О©╫О©╫О©╫о╒
 int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_route_msg begin"));
@@ -189,7 +189,7 @@ int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
         LOGERROR((BROKER, "ffbroker_t::handle_route_msg no this node id[%u]", msg_.node_id));
         return -1;
     }
-    send_msg(it->second.sock, msg_);
+    send_msg(it->second.sock, BROKER_TO_CLIENT_MSG, msg_);
     LOGTRACE((BROKER, "ffbroker_t::handle_route_msg end ok"));
     return 0;
 }
