@@ -109,20 +109,20 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
     {
         if (msg_.msg_id == 0)//! callback msg
         {
-            ffslot_t::callback_t* cb = m_ffslot.get_callback(msg_.msg_id);
+            ffslot_t::callback_t* cb = m_ffslot.get_callback(msg_.callback_id);
             if (cb)
             {
-                ffslot_msg_arg arg(msg_.body, sock_);
+                ffslot_req_arg arg(msg_.body, sock_->get_data<session_data_t>()->get_node_id());
                 cb->exe(&arg);
                 return 0;
             }
         }
         else//! call interface
         {
-            ffslot_t::callback_t* cb = m_ffslot.get_callback(msg_.callback_id);
+            ffslot_t::callback_t* cb = m_ffslot.get_callback(msg_.msg_id);
             if (cb)
             {
-                ffslot_msg_arg arg(msg_.body, sock_);
+                ffslot_req_arg arg(msg_.body, sock_->get_data<session_data_t>()->get_node_id());
                 cb->exe(&arg);
                 return 0;
             }
