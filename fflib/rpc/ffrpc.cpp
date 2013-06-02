@@ -8,8 +8,9 @@ using namespace ff;
 #define FFRPC                   "FFRPC"
 #define BROKER_MASTER_NODE_ID   0
 
-ffrpc_t::ffrpc_t():
-    m_service_id(0),
+ffrpc_t::ffrpc_t(const string& service_name_, uint16_t service_id_):
+    m_service_name(service_name_),
+    m_service_id(service_id_),
     m_bind_broker_id(0)
 {
     
@@ -104,5 +105,33 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
 
 int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
+    try
+    {
+        if (msg_.msg_id == 0)//! callback msg
+        {
+            ffslot_t::callback_t* cb = m_ffslot.get_callback(msg_.msg_id);
+            if (cb)
+            {
+                ffslot_msg_arg arg(msg_.body, sock_);
+                cb->exe(&arg);
+                return 0;
+            }
+        }
+        else//! call interface
+        {
+            ffslot_t::callback_t* cb = m_ffslot.get_callback(msg_.callback_id);
+            if (cb)
+            {
+                ffslot_msg_arg arg(msg_.body, sock_);
+                cb->exe(&arg);
+                return 0;
+            }
+        }
+    }
+    catch(exception& e_)
+    {
+        LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg exception<%s>", e_.what()));
+        return -1;
+    }
     return 0;
 }

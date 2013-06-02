@@ -991,14 +991,15 @@ struct broker_route_t//!broker 转发消息
     {
         virtual string encode()
         {
-            return (init_encoder() << node_id << msg_id << body).get_buff() ;
+            return (init_encoder() << node_id << msg_id << callback_id << body).get_buff() ;
         }
         virtual void decode(const string& src_buff_)
         {
-            init_decoder(src_buff_) >> node_id >> msg_id >> body;
+            init_decoder(src_buff_) >> node_id >> msg_id >> callback_id >> body;
         }
         uint32_t                    node_id;//! 需要转发到哪个节点上
         uint32_t                    msg_id;//! 调用的是哪个接口
+        uint32_t                    callback_id;
         string                      body;
     };
 };

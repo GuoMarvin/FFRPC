@@ -5,6 +5,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <set>
 using namespace std;
 
 #include "net/msg_handler_i.h"
@@ -12,6 +13,7 @@ using namespace std;
 #include "base/ffslot.h"
 #include "net/codec.h"
 #include "base/thread.h"
+#include "rpc/ffrpc_ops.h"
 
 namespace ff {
 
@@ -21,7 +23,7 @@ class ffrpc_t: public msg_handler_i
     struct slave_broker_info_t;
     struct broker_client_info_t;
 public:
-    ffrpc_t();
+    ffrpc_t(const string& service_name_, uint16_t service_id_ = 1);
     virtual ~ffrpc_t();
 
     int open(const string& opt_);
@@ -31,6 +33,11 @@ public:
     //! 处理消息
     int handle_msg(const message_t& msg_, socket_ptr_t sock_);
 
+    //! 注册接口
+    template <typename R, typename IN, typename OUT>
+    ffrpc_t& reg(R (*)(ffreq_t<IN, OUT>&));
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
+    ffrpc_t& reg(R (CLASS_TYPE::*)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -49,11 +56,27 @@ private:
     task_queue_t                            m_tq;
     thread_t                                m_thread;
     ffslot_t                                m_ffslot;
+    ffslot_t                                m_ffslot_interface;//! 
     socket_ptr_t                            m_master_broker_sock;
+    map<string, ffslot_t::callback_t*>      m_reg_iterface;
     map<uint32_t, slave_broker_info_t>      m_slave_broker_sockets;
     map<string, uint32_t>                   m_msg2id;
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
 };
+
+//! 注册接口
+template <typename R, typename IN, typename OUT>
+ffrpc_t& ffrpc_t::reg(R (*func_)(ffreq_t<IN, OUT>&))
+{
+    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_);
+    return *this;
+}
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
+ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj)
+{
+    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_, obj);
+    return *this;
+}
 
 struct ffrpc_t::session_data_t
 {

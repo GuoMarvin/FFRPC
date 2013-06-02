@@ -28,6 +28,19 @@ public:
     socket_ptr_t sock;
 };
 
+class ffslot_req_arg: public ffslot_t::callback_arg_t
+{
+public:
+    ffslot_req_arg(const string& s_):
+        body(s_)
+    {}
+    virtual int type()
+    {
+        return TYPEID(ffslot_req_arg);
+    }
+    string       body;
+};
+
 struct ffrpc_ops_t
 {
     template <typename R, typename T>
@@ -81,6 +94,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(T&, socke
     };
     return new lambda_cb(func_, obj_);
 }
+
+
+class null_type_t {};
+template<typename T, typename R = null_type_t>
+struct ffreq_t
+{
+};
+
 
 enum ffrpc_cmd_def_e
 {
