@@ -11,6 +11,7 @@ using namespace ff;
 ffrpc_t::ffrpc_t(const string& service_name_, uint16_t service_id_):
     m_service_name(service_name_),
     m_service_id(service_id_),
+    m_node_id(0),
     m_bind_broker_id(0)
 {
     
@@ -100,6 +101,11 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 
 int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_)
 {
+    if (msg_.node_id != 0)
+    {
+        m_node_id = msg_.node_id;
+    }
+    
     return 0;
 }
 

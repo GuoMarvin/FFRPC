@@ -52,6 +52,7 @@ private:
 private:
     string                                  m_service_name;
     uint16_t                                m_service_id;
+    uint32_t                                m_node_id;
     uint32_t                                m_bind_broker_id;
     task_queue_t                            m_tq;
     thread_t                                m_thread;
