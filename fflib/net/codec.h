@@ -970,18 +970,18 @@ struct broker_sync_all_registered_data_t
         {}
         virtual string encode()
         {
-            return (init_encoder() << node_id << msg2id << m_broker_client_info).get_buff() ;
+            return (init_encoder() << node_id << msg2id << broker_client_info).get_buff() ;
         }
         virtual void decode(const string& src_buff_)
         {
-            init_decoder(src_buff_) >> node_id >> msg2id >> m_broker_client_info;
+            init_decoder(src_buff_) >> node_id >> msg2id >> broker_client_info;
         }
         uint32_t                                node_id;//! 被分配的node id
         map<string, uint32_t>                   msg2id; //! 消息名称对应的消息id 值
         //!记录所有的broker slave 信息
-        map<uint32_t, slave_broker_info_t>      m_slave_broker_info;//! node id -> broker slave
+        map<uint32_t, slave_broker_info_t>      slave_broker_info;//! node id -> broker slave
         //! 记录所有服务/接口信息
-        map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
+        map<uint32_t, broker_client_info_t>     broker_client_info;//! node id -> service
     };
 };
 

@@ -73,6 +73,24 @@ public:
         }
         return NULL;
     }
+    void del(int cmd_)
+    {
+        map<int, callback_t*>::iterator it = m_cmd2callback.find(cmd_);
+        if (it != m_cmd2callback.end())
+        {
+            delete it->second;
+            m_cmd2callback.erase(it);
+        }
+    }
+    void del(const string& cmd_)
+    {
+        map<string, callback_t*>::iterator it = m_name2callback.find(cmd_);
+        if (it != m_name2callback.end())
+        {
+            delete it->second;
+            m_name2callback.erase(it);
+        }
+    }
 private:
     map<int, callback_t*>       m_cmd2callback;
     map<string, callback_t*>    m_name2callback;

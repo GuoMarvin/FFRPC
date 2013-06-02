@@ -143,16 +143,16 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
     for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
          it != m_broker_client_info.end(); ++it)
     {
-        msg.m_broker_client_info[it->first].bind_broker_id      = it->second.bind_broker_id;
-        msg.m_broker_client_info[it->first].service_name        = it->second.service_name;
-        msg.m_broker_client_info[it->first].service_id          = it->second.service_id;
+        msg.broker_client_info[it->first].bind_broker_id      = it->second.bind_broker_id;
+        msg.broker_client_info[it->first].service_name        = it->second.service_name;
+        msg.broker_client_info[it->first].service_id          = it->second.service_id;
     }
     //! ��������ע���broker slave�ڵ㸳ֵ����Ϣ
     for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
          it != m_slave_broker_sockets.end(); ++it)
     {
-        msg.m_slave_broker_info[it->first].host = it->second.host;
-        msg.m_slave_broker_info[it->first].port = it->second.port;
+        msg.slave_broker_info[it->first].host = it->second.host;
+        msg.slave_broker_info[it->first].port = it->second.port;
     }
     
     //! ��������ע���broker slave�ڵ��������е���Ϣ

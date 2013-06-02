@@ -47,6 +47,10 @@ int main(int argc, char* argv[])
     foo_t foo;
     ffrpc.reg(&foo_t::print)
          .reg(&foo_t::echo, &foo);
+    
+    
+    echo_t::in_t in;
+    ffrpc.call("echo", 0, in);
 /*    
     if (argc == 1)
     {

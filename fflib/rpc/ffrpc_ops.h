@@ -13,6 +13,9 @@ using namespace std;
 namespace ff
 {
 
+#define BROKER_MASTER_NODE_ID   0
+#define GEN_SERVICE_NAME(M, X, Y) snprintf(M, sizeof(M), "%s@%u", X, Y)
+
 class ffslot_msg_arg: public ffslot_t::callback_arg_t
 {
 public:
@@ -89,6 +92,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(T&, socket_ptr_t))
             msg.decode(msg_data->body);
             m_func(msg, msg_data->sock);
         }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func); }
         func_t m_func;
     };
     return new lambda_cb(func_);
@@ -111,6 +115,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(T&, socke
             msg.decode(msg_data->body);
             (m_obj->*(m_func))(msg, msg_data->sock);
         }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj); }
         func_t      m_func;
         CLASS_TYPE* m_obj;
     };
@@ -137,6 +142,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             req.node_id = msg_data->node_id;
             m_func(req);
         }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func); }
         func_t m_func;
     };
     return new lambda_cb(func_);
@@ -159,6 +165,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             req.arg.decode(msg_data->body);
             (m_obj->*(m_func))(req);
         }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj); }
         func_t      m_func;
         CLASS_TYPE* m_obj;
     };

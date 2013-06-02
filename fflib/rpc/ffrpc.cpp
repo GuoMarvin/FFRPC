@@ -6,7 +6,6 @@
 using namespace ff;
 
 #define FFRPC                   "FFRPC"
-#define BROKER_MASTER_NODE_ID   0
 
 ffrpc_t::ffrpc_t(const string& service_name_, uint16_t service_id_):
     m_service_name(service_name_),
@@ -106,6 +105,43 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
         m_node_id = msg_.node_id;
     }
     
+    m_msg2id = msg_.msg2id;
+    map<string, uint32_t>::iterator it = msg_.msg2id.begin();
+    for (; it != msg_.msg2id.end(); ++it)
+    {
+        map<string, ffslot_t::callback_t*>::iterator it2 = m_reg_iterface.find(it->first);
+        if (it2 != m_reg_iterface.end() && NULL == m_ffslot_callback.get_callback(it->second))
+        {
+            m_ffslot_callback.bind(it->second, it2->second);
+        }
+    }
+    
+    map<uint32_t, broker_sync_all_registered_data_t::slave_broker_info_t>::iterator it3 = msg_.slave_broker_info.begin();
+    for (; it3 != msg_.slave_broker_info.end(); ++it3)
+    {
+        if (m_slave_broker_sockets.find(it3->first) == m_slave_broker_sockets.end())//! new broker
+        {
+            //connect to and register to
+            m_slave_broker_sockets[it3->first].host = it3->second.host;
+            m_slave_broker_sockets[it3->first].port = it3->second.port;
+            m_slave_broker_sockets[it3->first].sock = NULL;//! TODO
+        }
+    }
+    
+    m_broker_client_info.clear();
+    m_broker_client_name2nodeid.clear();
+    map<uint32_t, broker_sync_all_registered_data_t::broker_client_info_t>::iterator it4 = msg_.broker_client_info.begin();
+    for (; it4 != msg_.broker_client_info.end(); ++it4)
+    {
+        ffrpc_t::broker_client_info_t& broker_client_info = m_broker_client_info[it4->first];
+        broker_client_info.bind_broker_id = it4->second.bind_broker_id;
+        broker_client_info.service_name   = it4->second.service_name;
+        broker_client_info.service_id     = it4->second.service_id;
+
+        char name[512];
+        GEN_SERVICE_NAME(name, broker_client_info.service_name.c_str(), broker_client_info.service_id);
+        m_broker_client_name2nodeid[name] = it4->first;
+    }
     return 0;
 }
 
@@ -120,6 +156,7 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
             {
                 ffslot_req_arg arg(msg_.body, sock_->get_data<session_data_t>()->get_node_id());
                 cb->exe(&arg);
+                m_ffslot.del(msg_.callback_id);
                 return 0;
             }
         }
