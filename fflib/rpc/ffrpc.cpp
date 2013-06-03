@@ -168,7 +168,7 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
     LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u] begin", msg_.msg_id));
     try
     {
-        if (msg_.msg_id == 0)//! callback msg
+        if (msg_.msg_id == 0)//! msg_id 为0表示这是一个回调的消息，callback_id已经有值
         {
             ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
             if (cb)
@@ -179,7 +179,7 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
                 return 0;
             }
         }
-        else//! call interface
+        else//! 表示调用接口
         {
             ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.msg_id);
             if (cb)
