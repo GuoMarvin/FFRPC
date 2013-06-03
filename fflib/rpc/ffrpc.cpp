@@ -200,19 +200,47 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
     return 0;
 }
 
-void ffrpc_t::send_msg(uint32_t broker_node_id_, uint16_t cmd_, const string& body_)
+int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_)
 {
-    if (broker_node_id_ == BROKER_MASTER_NODE_ID)
+    LOGTRACE((FFRPC, "ffrpc_t::call_impl begin service_name_<%s>, msg_name_<%s>", service_name_.c_str(), msg_name_.c_str()));
+    map<string, uint32_t>::iterator it = m_broker_client_name2nodeid.find(service_name_);
+    if (it == m_broker_client_name2nodeid.end())
     {
-        msg_sender_t::send(m_master_broker_sock, BROKER_ROUTE_MSG, body_);
+        return -1;
+    }
+
+    uint32_t dest_node_id = it->second;
+    broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
+
+    broker_route_t::in_t msg;
+    msg.node_id     = dest_node_id;
+    msg.msg_id      = m_msg2id[msg_name_];
+    msg.body        = body_;
+    LOGTRACE((FFRPC, "ffrpc_t::call_impl msgid<%u>", msg.msg_id));
+
+    if (callback_)
+    {
+        msg.callback_id = get_callback_id();
+        m_ffslot_callback.bind(msg.callback_id, callback_);
     }
     else
     {
-        map<uint32_t, slave_broker_info_t>::iterator it_slave_broker = m_slave_broker_sockets.find(broker_node_id_);
+        msg.callback_id = 0;
+    }
+
+    uint32_t broker_node_id = broker_client_info.bind_broker_id;
+    if (broker_node_id == BROKER_MASTER_NODE_ID)
+    {
+        msg_sender_t::send(m_master_broker_sock, BROKER_ROUTE_MSG, msg);
+    }
+    else
+    {
+        map<uint32_t, slave_broker_info_t>::iterator it_slave_broker = m_slave_broker_sockets.find(broker_node_id);
         if (it_slave_broker != m_slave_broker_sockets.end())
         {
-            msg_sender_t::send(it_slave_broker->second.sock, BROKER_ROUTE_MSG, body_);
+            msg_sender_t::send(it_slave_broker->second.sock, BROKER_ROUTE_MSG, msg);
         }
     }
+    return 0;
 }
 

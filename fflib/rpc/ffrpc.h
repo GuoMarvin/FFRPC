@@ -45,7 +45,7 @@ public:
     int call(const string& name_, uint16_t index_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     
     uint32_t get_callback_id() { return ++m_callback_id; }
-    void send_msg(uint32_t node_id_, uint16_t cmd_, const string& body_);
+    int call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -124,35 +124,7 @@ int ffrpc_t::call(const string& name_, uint16_t index_, T& req_, ffslot_t::callb
 {
     char name[512];
     GEN_SERVICE_NAME(name, name_.c_str(), index_);
-    map<string, uint32_t>::iterator it = m_broker_client_name2nodeid.begin();
-    if (it == m_broker_client_name2nodeid.end())
-    {
-        return -1;
-    }
-    
-    uint32_t dest_node_id = it->second;
-    broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
-
-    broker_route_t::in_t msg;
-    msg.node_id     = dest_node_id;
-    msg.msg_id      = m_msg2id[TYPE_NAME(T)];
-    msg.body = req_.encode();
-
-    if (callback_)
-    {
-        msg.callback_id = get_callback_id();
-        m_ffslot_callback.bind(msg.callback_id, callback_);
-    }
-    else
-    {
-        msg.callback_id = 0;
-    }
-
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::send_msg, this,
-                                    broker_client_info.bind_broker_id,
-                                    BROKER_ROUTE_MSG,
-                                    msg.encode()));
-
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, string(name), TYPE_NAME(T), req_.encode(), callback_));
     
     return 0;
 }

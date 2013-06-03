@@ -9,6 +9,7 @@ using namespace std;
 #include "base/ffslot.h"
 #include "net/socket_i.h"
 #include "base/fftype.h"
+#include "net/codec.h"
 
 namespace ff
 {
@@ -48,7 +49,7 @@ public:
 
 
 
-class null_type_t]: public ffmsg_t<null_type_t>
+class null_type_t: public ffmsg_t<null_type_t>
 {
     virtual string encode()
     {
