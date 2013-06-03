@@ -1,6 +1,8 @@
 #include "rpc/ffbroker.h"
 #include "rpc/ffrpc_ops.h"
 #include "base/log.h"
+#include "base/arg_helper.h"
+
 using namespace ff;
 
 ffbroker_t::ffbroker_t():
@@ -25,6 +27,10 @@ uint32_t ffbroker_t::alloc_id()
 
 int ffbroker_t::open(const string& opt_)
 {
+    arg_helper_t arg(opt_);
+    net_factory_t::start(1);
+    m_acceptor = net_factory_t::listen(arg.get_option_value("-l"), this);
+
     //! 绑定cmd 对应的回调函数
     m_ffslot.bind(BROKER_SLAVE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_slave_register, this))
             .bind(BROKER_CLIENT_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register, this))
@@ -32,6 +38,12 @@ int ffbroker_t::open(const string& opt_)
 
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
+    return 0;
+}
+int ffbroker_t::close()
+{
+    m_tq.close();
+    m_thread.join();
     return 0;
 }
 
@@ -64,6 +76,8 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
 int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 {
     uint16_t cmd = msg_.get_cmd();
+    LOGERROR((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> begin", cmd));
+
     ffslot_t::callback_t* cb = m_ffslot.get_callback(cmd);
     if (cb)
     {
@@ -71,6 +85,7 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
         {
             ffslot_msg_arg arg(msg_.get_body(), sock_);
             cb->exe(&arg);
+            LOGERROR((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> end ok", cmd));
             return 0;
         }
         catch(exception& e_)
@@ -118,6 +133,8 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
 
     session_data_t* psession = new session_data_t(alloc_id());
     sock_->set_data(psession);
+
+    LOGTRACE((BROKER, "ffbroker_t::handle_client_register alloc node id<%u>", psession->get_node_id()));
 
     broker_client_info_t& broker_client_info = m_broker_client_info[psession->get_node_id()];
     broker_client_info.bind_broker_id        = msg_.bind_broker_id;
@@ -168,17 +185,18 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
-        send_msg(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
+        msg_sender_t::send(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
     }
     //! 给所有已注册的broker client节点推送所有的消息
     for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
-         it == m_broker_client_info.end(); ++it)
+         it != m_broker_client_info.end(); ++it)
     {
         if (sock_ == it->second.sock)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
-        send_msg(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
+        msg_sender_t::send(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
+        LOGTRACE((BROKER, "ffbroker_t::handle_client_register to node_id[%u]", msg.node_id));
     }
     LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info end ok"));
     return 0;
@@ -194,7 +212,7 @@ int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
         LOGERROR((BROKER, "ffbroker_t::handle_route_msg no this node id[%u]", msg_.node_id));
         return -1;
     }
-    send_msg(it->second.sock, BROKER_TO_CLIENT_MSG, msg_);
+    msg_sender_t::send(it->second.sock, BROKER_TO_CLIENT_MSG, msg_);
     LOGTRACE((BROKER, "ffbroker_t::handle_route_msg end ok"));
     return 0;
 }

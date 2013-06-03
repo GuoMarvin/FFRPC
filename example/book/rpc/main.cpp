@@ -6,6 +6,7 @@
 
 #include "rpc/ffrpc.h"
 #include "rpc/ffbroker.h"
+#include "base/log.h"
 
 using namespace ff;
 
@@ -34,7 +35,8 @@ struct foo_t
 {
     static void print(ffreq_t<echo_t::in_t>& req_)
     {
-        //!
+        //printf("TTTTTTTTTTTxxx=%s\n", TYPE_NAME(echo_t::in_t).c_str());
+        LOGDEBUG(("XX", "FFFFF"));
     }
     void echo(ffreq_t<echo_t::in_t>& req_)
     {
@@ -43,14 +45,30 @@ struct foo_t
 };
 int main(int argc, char* argv[])
 {
+    printf("xxx=%s\n", TYPE_NAME(echo_t::in_t).c_str());
+    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file true -log_level 6");
+	//LOGDEBUG(("XX", "FFFFF"));
+
+
+    ffbroker_t ffbroker;
+    ffbroker.open("app -broker -client -l tcp://127.0.0.1:10241");
+    
     ffrpc_t ffrpc("echo");
     foo_t foo;
-    ffrpc.reg(&foo_t::print)
-         .reg(&foo_t::echo, &foo);
+    ffrpc.reg(&foo_t::print);
+         //.reg(&foo_t::echo, &foo);
     
+    ffrpc.open("app -broker -client -l tcp://127.0.0.1:10241");
+    sleep(1);
     
     echo_t::in_t in;
     ffrpc.call("echo", 0, in);
+    
+    sleep(300);
+    ffbroker.close();
+    return 0;
+    
+    
 /*    
     if (argc == 1)
     {

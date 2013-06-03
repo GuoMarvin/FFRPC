@@ -14,6 +14,7 @@ using namespace std;
 #include "net/codec.h"
 #include "base/thread.h"
 #include "rpc/ffrpc_ops.h"
+#include "net/msg_sender.h"
 
 namespace ff {
 
@@ -44,13 +45,13 @@ public:
     int call(const string& name_, uint16_t index_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     
     uint32_t get_callback_id() { return ++m_callback_id; }
+    void send_msg(uint32_t node_id_, uint16_t cmd_, const string& body_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
     //! 处理消息
     int handle_msg_impl(const message_t& msg_, socket_ptr_t sock_);
-    template<typename T>
-    int send_msg(socket_ptr_t sock_, uint16_t cmd_, T& msg_) { return 0; }
+
     //!  register all interface
     int register_all_interface(socket_ptr_t sock);
     int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
@@ -147,18 +148,11 @@ int ffrpc_t::call(const string& name_, uint16_t index_, T& req_, ffslot_t::callb
         msg.callback_id = 0;
     }
 
-    if (broker_client_info.bind_broker_id == BROKER_MASTER_NODE_ID)
-    {
-        send_msg(m_master_broker_sock, BROKER_ROUTE_MSG, msg);
-    }
-    else
-    {
-        map<uint32_t, slave_broker_info_t>::iterator it_slave_broker = m_slave_broker_sockets.find(broker_client_info.bind_broker_id);
-        if (it_slave_broker != m_slave_broker_sockets.end())
-        {
-            send_msg(it_slave_broker->second.sock, BROKER_ROUTE_MSG, msg);
-        }
-    }
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::send_msg, this,
+                                    broker_client_info.bind_broker_id,
+                                    BROKER_ROUTE_MSG,
+                                    msg.encode()));
+
     
     return 0;
 }

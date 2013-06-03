@@ -13,6 +13,9 @@ using namespace std;
 #include "base/ffslot.h"
 #include "net/codec.h"
 #include "base/thread.h"
+#include "base/smart_ptr.h"
+#include "net/net_factory.h"
+
 namespace ff
 {
 class ffbroker_t: public msg_handler_i
@@ -33,6 +36,7 @@ public:
     int handle_msg(const message_t& msg_, socket_ptr_t sock_);
 
     int open(const string& opt_);
+    int close();
     //! 分配一个nodeid
     uint32_t alloc_id();
 private:
@@ -48,12 +52,11 @@ private:
     int handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_);
     //! 转发消息
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
-    //! 发送数据 TODO
-    template<typename T>
-    int send_msg(socket_ptr_t sock_, uint16_t cmd_, T& msg_) { return 0; }
+
 private:
     //! 用于分配nodeid
     uint32_t                                m_node_id_index;
+    acceptor_i*                             m_acceptor;
     //! 记录所有注册到此节点上的连接
     task_queue_t                            m_tq;
     thread_t                                m_thread;
