@@ -48,7 +48,17 @@ public:
 
 
 
-class null_type_t {};
+class null_type_t]: public ffmsg_t<null_type_t>
+{
+    virtual string encode()
+    {
+        return (init_encoder()).get_buff() ;
+    }
+    virtual void decode(const string& src_buff_)
+    {
+    }
+};
+
 template<typename IN, typename OUT = null_type_t>
 struct ffreq_t
 {
