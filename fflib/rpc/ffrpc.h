@@ -45,6 +45,7 @@ public:
     int call(const string& name_, uint16_t index_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     
     uint32_t get_callback_id() { return ++m_callback_id; }
+    //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
     int call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_);
 private:
     //! 处理连接断开
