@@ -12,20 +12,25 @@ ffbroker_t::~ffbroker_t()
 
 }
 
-//! ����һ��nodeid
+//! 分配一个nodeid
 uint32_t ffbroker_t::alloc_id()
 {
-    return ++m_node_id_index;
+    uint32_t ret = ++m_node_id_index;
+    if (0 == ret)
+    {
+        return ++m_node_id_index;
+    }
+    return ret;
 }
 
 int ffbroker_t::open(const string& opt_)
 {
-    //! ��cmd ��Ӧ�Ļص�����
+    //! 绑定cmd 对应的回调函数
     m_ffslot.bind(BROKER_SLAVE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_slave_register, this))
             .bind(BROKER_CLIENT_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register, this))
             .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_route_msg, this));
 
-    //! ������а��߳�
+    //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
     return 0;
 }
@@ -40,7 +45,7 @@ int ffbroker_t::handle_msg(const message_t& msg_, socket_ptr_t sock_)
     m_tq.produce(task_binder_t::gen(&ffbroker_t::handle_msg_impl, this, msg_, sock_));
     return 0;
 }
-//! �������ӶϿ����򱻻ص�
+//! 当有连接断开，则被回调
 int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
 {
     if (NULL == sock_->get_data<session_data_t>())
@@ -55,7 +60,7 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
     sock_->safe_delete();
     return 0;
 }
-//! ������Ϣ���������ص�
+//! 当有消息到来，被回调
 int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 {
     uint16_t cmd = msg_.get_cmd();
@@ -77,7 +82,7 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
     return -1;
 }
 
-//! ����borker slave ע����Ϣ
+//! 处理borker slave 注册消息
 int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_slave_register begin"));
@@ -92,7 +97,7 @@ int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socke
     return 0;
 }
 
-//! ����borker client ע����Ϣ
+//! 处理borker client 注册消息
 int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_client_register begin"));
@@ -134,7 +139,7 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
     return 0;
 }
 
-//! ͬ�����еĵ�ǰ��ע��ӿ���Ϣ
+//! 同步所有的当前的注册接口信息
 int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info begin"));
@@ -147,7 +152,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         msg.broker_client_info[it->first].service_name        = it->second.service_name;
         msg.broker_client_info[it->first].service_id          = it->second.service_id;
     }
-    //! ��������ע���broker slave�ڵ㸳ֵ����Ϣ
+    //! 把所有已注册的broker slave节点赋值到消息
     for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
          it != m_slave_broker_sockets.end(); ++it)
     {
@@ -155,7 +160,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         msg.slave_broker_info[it->first].port = it->second.port;
     }
     
-    //! ��������ע���broker slave�ڵ��������е���Ϣ
+    //! 给所有已注册的broker slave节点推送所有的消息
     for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
          it != m_slave_broker_sockets.end(); ++it)
     {
@@ -165,7 +170,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         }
         send_msg(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
     }
-    //! ��������ע���broker client�ڵ��������е���Ϣ
+    //! 给所有已注册的broker client节点推送所有的消息
     for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
          it == m_broker_client_info.end(); ++it)
     {
@@ -179,7 +184,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
     return 0;
 }
 
-//! ת����Ϣ
+//! 转发消息
 int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_route_msg begin"));

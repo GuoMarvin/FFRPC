@@ -17,80 +17,80 @@ namespace ff
 {
 class ffbroker_t: public msg_handler_i
 {
-    //! ÿ�����Ӷ�Ҫ����һ��session�����ڼ�¼��socket����Ӧ����Ϣ
+    //! 每个连接都要分配一个session，用于记录该socket，对应的信息s
     struct session_data_t;
-    //! ��¼ÿ��broker slave �Ľӿ���Ϣ
+    //! 记录每个broker slave 的接口信息
     struct slave_broker_info_t;
-    //! ��¼ÿ��broker client �Ľӿ���Ϣ
+    //! 记录每个broker client 的接口信息
     struct broker_client_info_t;
 public:
     ffbroker_t();
     virtual ~ffbroker_t();
 
-    //! �������ӶϿ����򱻻ص�
+    //! 当有连接断开，则被回调
     int handle_broken(socket_ptr_t sock_);
-    //! ������Ϣ���������ص�
+    //! 当有消息到来，被回调
     int handle_msg(const message_t& msg_, socket_ptr_t sock_);
 
     int open(const string& opt_);
-    //! ����һ��nodeid
+    //! 分配一个nodeid
     uint32_t alloc_id();
 private:
-    //! �������ӶϿ����򱻻ص�
+    //! 当有连接断开，则被回调
     int handle_broken_impl(socket_ptr_t sock_);
-    //! ������Ϣ���������ص�
+    //! 当有消息到来，被回调
     int handle_msg_impl(const message_t& msg_, socket_ptr_t sock_);
-    //! ͬ�����еĵ�ǰ��ע��ӿ���Ϣ
+    //! 同步所有的当前的注册接口信息
     int sync_all_register_info(socket_ptr_t sock_);
-    //! ����borker slave ע����Ϣ
+    //! 处理borker slave 注册消息
     int handle_slave_register(register_slave_broker_t::in_t& msg_, socket_ptr_t sock_);
-    //! ����borker client ע����Ϣ
+    //! 处理borker client 注册消息
     int handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_);
-    //! ת����Ϣ
+    //! 转发消息
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
-    //! ������� TODO
+    //! 发送数据 TODO
     template<typename T>
     int send_msg(socket_ptr_t sock_, uint16_t cmd_, T& msg_) { return 0; }
 private:
-    //! ���ڷ���nodeid
+    //! 用于分配nodeid
     uint32_t                                m_node_id_index;
-    //! ��¼����ע�ᵽ�˽ڵ��ϵ�����
+    //! 记录所有注册到此节点上的连接
     task_queue_t                            m_tq;
     thread_t                                m_thread;
-    //! ���ڰ󶨻ص�����
+    //! 用于绑定回调函数
     ffslot_t                                m_ffslot;
-    //! ��¼���е�broker socket��Ӧnode id
+    //! 记录所有的broker socket对应node id
     map<uint32_t, slave_broker_info_t>      m_slave_broker_sockets;
-    //! ��¼���е���Ϣ��ƶ�Ӧ����Ϣidֵ
+    //! 记录所有的消息名称对应的消息id值
     map<string, uint32_t>                   m_msg2id;
-    //! ��¼���з���/�ӿ���Ϣ
+    //! 记录所有服务/接口信息
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
 };
 
-//! ÿ�����Ӷ�Ҫ����һ��session�����ڼ�¼��socket����Ӧ����Ϣ
+//! 每个连接都要分配一个session，用于记录该socket，对应的信息
 struct ffbroker_t::session_data_t
 {
     session_data_t(uint32_t n = 0):
         node_id(n)
     {}
     uint32_t get_node_id() { return node_id; }
-    //! �������Ψһ�Ľڵ�id
+    //! 被分配的唯一的节点id
     uint32_t node_id;
 };
-//! ��¼ÿ��broker client �Ľӿ���Ϣ
+//! 记录每个broker client 的接口信息
 struct ffbroker_t::broker_client_info_t
 {
     broker_client_info_t():
         bind_broker_id(0),
         sock(NULL)
     {}
-    //! ���󶨵Ľڵ�broker node id
+    //! 被绑定的节点broker node id
     uint32_t bind_broker_id;
     string   service_name;
     uint16_t service_id;
     socket_ptr_t sock;
 };
-//! ��¼ÿ��broker slave �Ľӿ���Ϣ
+//! 记录每个broker slave 的接口信息
 struct ffbroker_t::slave_broker_info_t
 {
     slave_broker_info_t():
