@@ -39,9 +39,9 @@ struct foo_t
         LOGDEBUG(("XX", "FFFFF %s", req_.arg.body.c_str()));
         req_.response(req_.arg);
     }
-    void echo(ffreq_t<echo_t::in_t>& req_)
+    void echo(ffreq_t<echo_t::in_t>& req_, int arg1_)
     {
-        LOGDEBUG(("XX", "%s %s", __FUNCTION__, req_.arg.body.c_str()));
+        LOGDEBUG(("XX", "%s %s %d", __FUNCTION__, req_.arg.body.c_str(), arg1_));
     }
 };
 int main(int argc, char* argv[])
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
     
     echo_t::in_t in;
     in.body = "helloworld";
-    ffrpc.call("echo", 0, in, ffrpc_ops_t::gen_callback(&foo_t::echo, &foo));
+    ffrpc.call("echo", 0, in, ffrpc_ops_t::gen_callback(&foo_t::echo, &foo, 1024));
     
     sleep(300);
     ffbroker.close();

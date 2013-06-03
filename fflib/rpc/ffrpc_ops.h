@@ -102,6 +102,10 @@ struct ffrpc_ops_t
     static ffslot_t::callback_t* gen_callback(R (*)(ffreq_t<IN, OUT>&));
     template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
     static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj);
+
+    //! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename ARG1>
+    static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, ARG1 arg1_), CLASS_TYPE* obj_, ARG1 arg1_);
 };
 
 template <typename R, typename T>
@@ -206,6 +210,34 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
     return new lambda_cb(func_, obj_);
 }
 
+//! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename ARG1>
+ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, ARG1), CLASS_TYPE* obj_, ARG1 arg1_)
+{
+    struct lambda_cb: public ffslot_t::callback_t
+    {
+        typedef R (CLASS_TYPE::*func_t)(ffreq_t<IN, OUT>&, ARG1);
+        lambda_cb(func_t func_, CLASS_TYPE* obj_, ARG1 arg1_):m_func(func_), m_obj(obj_), m_arg1(arg1_){}
+        virtual void exe(ffslot_t::callback_arg_t* args_)
+        {
+            if (args_->type() != TYPEID(ffslot_req_arg))
+            {
+                return;
+            }
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            ffreq_t<IN, OUT> req;
+            req.arg.decode(msg_data->body);
+            req.callback_id = msg_data->callback_id;
+            req.responser = msg_data->responser;
+            (m_obj->*(m_func))(req, m_arg1);
+        }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj, m_arg1); }
+        func_t      m_func;
+        CLASS_TYPE* m_obj;
+        ARG1        m_arg1;
+    };
+    return new lambda_cb(func_, obj_, arg1_);
+}
 
 enum ffrpc_cmd_def_e
 {
