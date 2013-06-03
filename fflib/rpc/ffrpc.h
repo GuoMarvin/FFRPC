@@ -18,7 +18,7 @@ using namespace std;
 
 namespace ff {
 
-class ffrpc_t: public msg_handler_i
+class ffrpc_t: public msg_handler_i, ffresponser_t
 {
     struct session_data_t;
     struct slave_broker_info_t;
@@ -47,6 +47,10 @@ public:
     uint32_t get_callback_id() { return ++m_callback_id; }
     //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
     int call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_);
+    //! 调用接口后，需要回调消息给请求者
+    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_);
+    //! 通过node id 发送消息给broker
+    void send_to_broker_by_nodeid(uint32_t node_id_, const string& body_, uint32_t msg_id_ = 0, uint32_t callback_id_ = 0);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);

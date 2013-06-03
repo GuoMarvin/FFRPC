@@ -32,19 +32,31 @@ public:
     socket_ptr_t sock;
 };
 
+
+class ffresponser_t
+{
+public:
+    virtual ~ffresponser_t(){}
+    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_) = 0;
+};
+
 class ffslot_req_arg: public ffslot_t::callback_arg_t
 {
 public:
-    ffslot_req_arg(const string& s_, uint32_t n_):
+    ffslot_req_arg(const string& s_, uint32_t n_, uint32_t cb_id_, ffresponser_t* p):
         body(s_),
-        node_id(n_)
+        node_id(n_),
+        callback_id(cb_id_),
+        responser(p)
     {}
     virtual int type()
     {
         return TYPEID(ffslot_req_arg);
     }
-    string       body;
-    uint32_t     node_id;
+    string          body;
+    uint32_t        node_id;
+    uint32_t        callback_id;
+    ffresponser_t*  responser;
 };
 
 
@@ -63,11 +75,18 @@ class null_type_t: public ffmsg_t<null_type_t>
 template<typename IN, typename OUT = null_type_t>
 struct ffreq_t
 {
-    IN          arg;
-    uint32_t    node_id;
+    ffreq_t():
+        node_id(0),
+        callback_id(0),
+        responser(NULL)
+    {}
+    IN              arg;
+    uint32_t        node_id;
+    uint32_t        callback_id;
+    ffresponser_t*  responser;
     void response(OUT& out_)
     {
-        //!TODO
+        responser->response(node_id, 0, callback_id, out_.encode());
     }
 };
 
@@ -151,6 +170,8 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             ffreq_t<IN, OUT> req;
             req.arg.decode(msg_data->body);
             req.node_id = msg_data->node_id;
+            req.callback_id = msg_data->callback_id;
+            req.responser = msg_data->responser;
             m_func(req);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func); }
@@ -174,6 +195,8 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode(msg_data->body);
+            req.callback_id = msg_data->callback_id;
+            req.responser = msg_data->responser;
             (m_obj->*(m_func))(req);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj); }
