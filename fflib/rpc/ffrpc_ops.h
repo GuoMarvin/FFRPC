@@ -16,6 +16,7 @@ namespace ff
 
 #define BROKER_MASTER_NODE_ID   0
 #define GEN_SERVICE_NAME(M, X, Y) snprintf(M, sizeof(M), "%s@%u", X, Y)
+#define RECONNECT_TO_BROKER_TIMEOUT       1000//! ms
 
 class ffslot_msg_arg: public ffslot_t::callback_arg_t
 {
@@ -364,6 +365,7 @@ enum ffrpc_cmd_def_e
     BROKER_ROUTE_MSG,
     BROKER_SYNC_DATA_MSG,
     BROKER_TO_CLIENT_MSG,
+    CLIENT_REGISTER_TO_SLAVE_BROKER,
 };
 
 }

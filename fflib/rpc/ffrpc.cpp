@@ -6,7 +6,7 @@
 using namespace ff;
 
 #define FFRPC                   "FFRPC"
-#define RECONNECT_TIMEOUT       1000//! ms
+
 ffrpc_t::ffrpc_t(const string& service_name_):
     m_service_name(service_name_),
     m_node_id(0),
@@ -65,7 +65,18 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
     session_data_t* psession = new session_data_t(node_id_);
     sock->set_data(psession);
 
-    register_all_interface(sock);
+    //! 发送注册消息给master broker
+    if (node_id_ == BROKER_MASTER_NODE_ID)
+    {
+        register_all_interface(sock);
+    }
+    //! 发送注册消息给master slave broker
+    else
+    {
+        register_client_to_slave_broker_t::in_t msg;
+        msg.node_id = m_node_id;
+        msg_sender_t::send(sock, CLIENT_REGISTER_TO_SLAVE_BROKER, msg);
+    }
     return sock;
 }
 //! 投递到ffrpc 特定的线程
@@ -83,8 +94,8 @@ void ffrpc_t::timer_reconnect_broker()
         LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
         return;
     }
-    //! 设置定时器重练
-    m_timer.once_timer(RECONNECT_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+    //! 设置定时器重连
+    m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker  end ok"));
 }
 
@@ -144,7 +155,7 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
         m_broker_client_info.clear();//! 各个服务的记录表清除
         m_broker_client_name2nodeid.clear();//! 服务名到node id的映射
         //! 设置定时器重练
-        m_timer.once_timer(RECONNECT_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+        m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     }
     else
     {
@@ -206,8 +217,7 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
         {
             //connect to and register to
             m_slave_broker_sockets[it3->first].host = it3->second.host;
-            m_slave_broker_sockets[it3->first].port = it3->second.port;
-            m_slave_broker_sockets[it3->first].sock = NULL;//! TODO
+            m_slave_broker_sockets[it3->first].sock = connect_to_broker(it3->second.host, it3->first);
         }
     }
     

@@ -39,6 +39,11 @@ public:
     int close();
     //! 分配一个nodeid
     uint32_t alloc_id();
+    //! 获取任务队列对象
+    task_queue_t& get_tq();
+    
+    //! 连接到broker master
+    int connect_to_master_broker();
 private:
     //! 当有连接断开，则被回调
     int handle_broken_impl(socket_ptr_t sock_);
@@ -52,8 +57,17 @@ private:
     int handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_);
     //! 转发消息
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
+    //! 处理broker client连接到broker slave的消息
+    int handle_client_register_slave_broker(register_client_to_slave_broker_t::in_t& msg_, socket_ptr_t sock_);
 
+    //! 判断是否是master broker
+    bool is_master();
 private:
+    //!broker master 的host信息
+    string                                  m_broker_host;
+    //! 连接到master 的连接socket
+    socket_ptr_t                            m_master_broker_sock;
+    timer_service_t                         m_timer;
     //! 用于分配nodeid
     uint32_t                                m_node_id_index;
     acceptor_i*                             m_acceptor;

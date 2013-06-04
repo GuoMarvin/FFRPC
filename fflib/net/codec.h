@@ -893,24 +893,24 @@ public:
 };
 
 typedef bool_ret_msg_t ffmsg_bool_t;
-
+//! 向broker master 注册slave
 struct register_slave_broker_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
         virtual string encode()
         {
-            return (init_encoder() << host << port).get_buff() ;
+            return (init_encoder() << host).get_buff() ;
         }
         virtual void decode(const string& src_buff_)
         {
-            init_decoder(src_buff_) >> host >> port;
+            init_decoder(src_buff_) >> host;
         }
         string          host;
-        int32_t         port;
     };
 };
 
+//! 向broker master 注册client
 struct register_broker_client_t
 {
     struct in_t: public ffmsg_t<in_t>
@@ -928,7 +928,22 @@ struct register_broker_client_t
         std::set<string>            msg_names;
     };
 };
-
+//! 向broker slave 注册client
+struct register_client_to_slave_broker_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        virtual string encode()
+        {
+            return (init_encoder() << node_id).get_buff() ;
+        }
+        virtual void decode(const string& src_buff_)
+        {
+            init_decoder(src_buff_) >> node_id;
+        }
+        uint32_t                    node_id;//! master分配client的node id
+    };
+};
 
 struct broker_sync_all_registered_data_t
 {

@@ -115,11 +115,9 @@ struct ffrpc_t::session_data_t
 struct ffrpc_t::slave_broker_info_t
 {
     slave_broker_info_t():
-        port(0),
         sock(NULL)
     {}
     string          host;
-    int32_t         port;
     socket_ptr_t    sock;
 };
 struct ffrpc_t::broker_client_info_t
