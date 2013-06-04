@@ -294,5 +294,25 @@ private:
     map<string, number_t>      m_string2num;
     map<string, string>        m_string2string;
 };
+
+
+template<typename T>
+struct fftraits_t
+{
+    typedef T value_t;
+};
+
+template<typename T>
+struct fftraits_t<const T&>
+{
+    typedef T value_t;
+};
+
+template<typename T>
+struct fftraits_t<T&>
+{
+    typedef T value_t;
+};
+
 }
 #endif

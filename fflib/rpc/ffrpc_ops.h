@@ -104,8 +104,21 @@ struct ffrpc_ops_t
     static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj);
 
     //! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
-    template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename ARG1>
-    static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, ARG1 arg1_), CLASS_TYPE* obj_, ARG1 arg1_);
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1>
+    static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1), CLASS_TYPE* obj_, ARG1 arg1_);
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1,
+              typename FUNC_ARG2, typename ARG2>
+    static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2),
+                                                CLASS_TYPE* obj_, ARG1 arg1_, ARG2 arg2_);
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1,
+              typename FUNC_ARG2, typename ARG2, typename FUNC_ARG3, typename ARG3>
+    static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2, FUNC_ARG3),
+                                                CLASS_TYPE* obj_, ARG1 arg1_, ARG2 arg2_, ARG3 arg3_);
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1,
+              typename FUNC_ARG2, typename ARG2, typename FUNC_ARG3, typename ARG3, typename FUNC_ARG4, typename ARG4>
+    static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2, FUNC_ARG3, FUNC_ARG4),
+                                                CLASS_TYPE* obj_, ARG1 arg1_, ARG2 arg2_, ARG3 arg3_, ARG4 arg4_);
+    
 };
 
 template <typename R, typename T>
@@ -211,13 +224,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
 }
 
 //! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
-template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename ARG1>
-ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, ARG1), CLASS_TYPE* obj_, ARG1 arg1_)
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1>
+ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1), CLASS_TYPE* obj_, ARG1 arg1_)
 {
     struct lambda_cb: public ffslot_t::callback_t
     {
-        typedef R (CLASS_TYPE::*func_t)(ffreq_t<IN, OUT>&, ARG1);
-        lambda_cb(func_t func_, CLASS_TYPE* obj_, ARG1 arg1_):m_func(func_), m_obj(obj_), m_arg1(arg1_){}
+        typedef R (CLASS_TYPE::*func_t)(ffreq_t<IN, OUT>&, FUNC_ARG1);
+        lambda_cb(func_t func_, CLASS_TYPE* obj_, const ARG1& arg1_):
+            m_func(func_), m_obj(obj_), m_arg1(arg1_){}
         virtual void exe(ffslot_t::callback_arg_t* args_)
         {
             if (args_->type() != TYPEID(ffslot_req_arg))
@@ -234,9 +248,113 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj, m_arg1); }
         func_t      m_func;
         CLASS_TYPE* m_obj;
-        ARG1        m_arg1;
+        typename fftraits_t<ARG1>::value_t m_arg1;
     };
     return new lambda_cb(func_, obj_, arg1_);
+}
+
+//! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1, typename FUNC_ARG2, typename ARG2>
+ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2),
+                                                CLASS_TYPE* obj_, ARG1 arg1_, ARG2 arg2_)
+{
+    struct lambda_cb: public ffslot_t::callback_t
+    {
+        typedef R (CLASS_TYPE::*func_t)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2);
+        lambda_cb(func_t func_, CLASS_TYPE* obj_, const ARG1& arg1_, const ARG2& arg2_):
+            m_func(func_), m_obj(obj_), m_arg1(arg1_), m_arg2(arg2_)
+        {}
+        virtual void exe(ffslot_t::callback_arg_t* args_)
+        {
+            if (args_->type() != TYPEID(ffslot_req_arg))
+            {
+                return;
+            }
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            ffreq_t<IN, OUT> req;
+            req.arg.decode(msg_data->body);
+            req.callback_id = msg_data->callback_id;
+            req.responser = msg_data->responser;
+            (m_obj->*(m_func))(req, m_arg1, m_arg2);
+        }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj, m_arg1, m_arg2); }
+        func_t      m_func;
+        CLASS_TYPE* m_obj;
+        typename fftraits_t<ARG1>::value_t m_arg1;
+        typename fftraits_t<ARG2>::value_t m_arg2;
+    };
+    return new lambda_cb(func_, obj_, arg1_, arg2_);
+}
+
+//! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1, typename FUNC_ARG2, typename ARG2,
+          typename FUNC_ARG3, typename ARG3>
+ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2, FUNC_ARG3),
+                                                CLASS_TYPE* obj_, ARG1 arg1_, ARG2 arg2_, ARG3 arg3_)
+{
+    struct lambda_cb: public ffslot_t::callback_t
+    {
+        typedef R (CLASS_TYPE::*func_t)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2, FUNC_ARG3);
+        lambda_cb(func_t func_, CLASS_TYPE* obj_, const ARG1& arg1_, const ARG2& arg2_, const ARG3& arg3_):
+            m_func(func_), m_obj(obj_), m_arg1(arg1_), m_arg2(arg2_), m_arg3(arg3_)
+        {}
+        virtual void exe(ffslot_t::callback_arg_t* args_)
+        {
+            if (args_->type() != TYPEID(ffslot_req_arg))
+            {
+                return;
+            }
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            ffreq_t<IN, OUT> req;
+            req.arg.decode(msg_data->body);
+            req.callback_id = msg_data->callback_id;
+            req.responser = msg_data->responser;
+            (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3);
+        }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj, m_arg1, m_arg2, m_arg3); }
+        func_t      m_func;
+        CLASS_TYPE* m_obj;
+        typename fftraits_t<ARG1>::value_t m_arg1;
+        typename fftraits_t<ARG2>::value_t m_arg2;
+        typename fftraits_t<ARG3>::value_t m_arg3;
+    };
+    return new lambda_cb(func_, obj_, arg1_, arg2_, arg3_);
+}
+
+//! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1, typename FUNC_ARG2, typename ARG2,
+          typename FUNC_ARG3, typename ARG3, typename FUNC_ARG4, typename ARG4>
+ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2, FUNC_ARG3, FUNC_ARG4),
+                                                CLASS_TYPE* obj_, ARG1 arg1_, ARG2 arg2_, ARG3 arg3_, ARG4 arg4_)
+{
+    struct lambda_cb: public ffslot_t::callback_t
+    {
+        typedef R (CLASS_TYPE::*func_t)(ffreq_t<IN, OUT>&, FUNC_ARG1, FUNC_ARG2, FUNC_ARG3, FUNC_ARG4);
+        lambda_cb(func_t func_, CLASS_TYPE* obj_, const ARG1& arg1_, const ARG2& arg2_, const ARG3& arg3_, const ARG4& arg4_):
+            m_func(func_), m_obj(obj_), m_arg1(arg1_), m_arg2(arg2_), m_arg3(arg3_), m_arg4(arg4_)
+        {}
+        virtual void exe(ffslot_t::callback_arg_t* args_)
+        {
+            if (args_->type() != TYPEID(ffslot_req_arg))
+            {
+                return;
+            }
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            ffreq_t<IN, OUT> req;
+            req.arg.decode(msg_data->body);
+            req.callback_id = msg_data->callback_id;
+            req.responser = msg_data->responser;
+            (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3, m_arg4);
+        }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj, m_arg1, m_arg2, m_arg3, m_arg4); }
+        func_t      m_func;
+        CLASS_TYPE* m_obj;
+        typename fftraits_t<ARG1>::value_t m_arg1;
+        typename fftraits_t<ARG2>::value_t m_arg2;
+        typename fftraits_t<ARG3>::value_t m_arg3;
+        typename fftraits_t<ARG4>::value_t m_arg4;
+    };
+    return new lambda_cb(func_, obj_, arg1_, arg2_, arg3_, arg4_);
 }
 
 enum ffrpc_cmd_def_e

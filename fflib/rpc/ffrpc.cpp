@@ -43,7 +43,16 @@ int ffrpc_t::open(const string& opt_)
     
     register_all_interface(m_master_broker_sock);
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
-    LOGTRACE((FFRPC, "ffrpc_t::open end ok"));
+    while(m_node_id == 0)
+    {
+        usleep(1);
+        if (m_master_broker_sock == NULL)
+        {
+            LOGERROR((FFRPC, "ffrpc_t::open failed"));
+            return -1;
+        }
+    }
+    LOGTRACE((FFRPC, "ffrpc_t::open end ok m_node_id[%u]", m_node_id));
     return 0;
 }
 
