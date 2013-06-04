@@ -6,7 +6,7 @@
 using namespace ff;
 
 #define FFRPC                   "FFRPC"
-
+#define RECONNECT_TIMEOUT       1000//! ms
 ffrpc_t::ffrpc_t(const string& service_name_):
     m_service_name(service_name_),
     m_node_id(0),
@@ -26,22 +26,20 @@ int ffrpc_t::open(const string& opt_)
 {
     arg_helper_t arg(opt_);
     net_factory_t::start(1);
-    string host = arg.get_option_value("-l");
-
-    m_master_broker_sock = net_factory_t::connect(host, this);
-    if (NULL == m_master_broker_sock)
-    {
-        LOGERROR((FFRPC, "ffrpc_t::open failed, can't connect to remote broker<%s>", host.c_str()));
-        return -1;
-    }
-    session_data_t* psession = new session_data_t(BROKER_MASTER_NODE_ID);
-    m_master_broker_sock->set_data(psession);
+    m_host = arg.get_option_value("-l");
 
     m_ffslot.bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_CLIENT_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_route_msg, this));
-    
-    register_all_interface(m_master_broker_sock);
+
+    m_master_broker_sock = connect_to_broker(m_host, BROKER_MASTER_NODE_ID);
+
+    if (NULL == m_master_broker_sock)
+    {
+        LOGERROR((FFRPC, "ffrpc_t::open failed, can't connect to remote broker<%s>", m_host.c_str()));
+        return -1;
+    }
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
+
     while(m_node_id == 0)
     {
         usleep(1);
@@ -53,6 +51,41 @@ int ffrpc_t::open(const string& opt_)
     }
     LOGTRACE((FFRPC, "ffrpc_t::open end ok m_node_id[%u]", m_node_id));
     return 0;
+}
+
+//! 连接到broker master
+socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
+{
+    socket_ptr_t sock = net_factory_t::connect(host_, this);
+    if (NULL == sock)
+    {
+        LOGERROR((FFRPC, "ffrpc_t::register_to_broker_master failed, can't connect to remote broker<%s>", host_.c_str()));
+        return sock;
+    }
+    session_data_t* psession = new session_data_t(node_id_);
+    sock->set_data(psession);
+
+    register_all_interface(sock);
+    return sock;
+}
+//! 投递到ffrpc 特定的线程
+static void route_call_reconnect(ffrpc_t* ffrpc_)
+{
+    ffrpc_->get_tq().produce(task_binder_t::gen(&ffrpc_t::timer_reconnect_broker, ffrpc_));
+}
+//! 定时重连 broker master
+void ffrpc_t::timer_reconnect_broker()
+{
+    LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker begin..."));
+    m_master_broker_sock = connect_to_broker(m_host, BROKER_MASTER_NODE_ID);
+    if (NULL == m_master_broker_sock)
+    {
+        LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
+        return;
+    }
+    //! 设置定时器重练
+    m_timer.once_timer(RECONNECT_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+    LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker  end ok"));
 }
 
 //!  register all interface
@@ -69,7 +102,11 @@ int ffrpc_t::register_all_interface(socket_ptr_t sock)
     msg_sender_t::send(sock, BROKER_CLIENT_REGISTER, msg);
     return 0;
 }
-
+//! 获取任务队列对象
+task_queue_t& ffrpc_t::get_tq()
+{
+    return m_tq;
+}
 int ffrpc_t::handle_broken(socket_ptr_t sock_)
 {
     m_tq.produce(task_binder_t::gen(&ffrpc_t::handle_broken_impl, this, sock_));
@@ -91,11 +128,27 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
     if (BROKER_MASTER_NODE_ID == sock_->get_data<session_data_t>()->get_node_id())
     {
         m_master_broker_sock = NULL;
+        //! 连接到broker master的连接断开了
+        map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();//! node id -> info
+        for (; it != m_slave_broker_sockets.end(); ++it)
+        {
+            slave_broker_info_t& slave_broker_info = it->second;
+            delete slave_broker_info.sock->get_data<session_data_t>();
+            slave_broker_info.sock->set_data(NULL);
+            slave_broker_info.sock->close();
+        }
+        m_slave_broker_sockets.clear();//! 所有连接到broker slave的连接断开
+        m_ffslot_interface.clear();//! 注册的接口清除
+        m_ffslot_callback.clear();//! 回调函数清除
+        m_msg2id.clear();//! 消息映射表清除
+        m_broker_client_info.clear();//! 各个服务的记录表清除
+        m_broker_client_name2nodeid.clear();//! 服务名到node id的映射
+        //! 设置定时器重练
+        m_timer.once_timer(RECONNECT_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     }
     else
     {
         m_slave_broker_sockets.erase(sock_->get_data<session_data_t>()->get_node_id());
-        m_broker_client_info.erase(sock_->get_data<session_data_t>()->get_node_id());
     }
     delete sock_->get_data<session_data_t>();
     sock_->set_data(NULL);

@@ -96,11 +96,9 @@ struct ffbroker_t::broker_client_info_t
 struct ffbroker_t::slave_broker_info_t
 {
     slave_broker_info_t():
-        port(0),
         sock(NULL)
     {}
     string          host;
-    int32_t         port;
     socket_ptr_t    sock;
 };
 

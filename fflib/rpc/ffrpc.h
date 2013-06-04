@@ -15,6 +15,7 @@ using namespace std;
 #include "base/thread.h"
 #include "rpc/ffrpc_ops.h"
 #include "net/msg_sender.h"
+#include "base/timer_service.h"
 
 namespace ff {
 
@@ -51,6 +52,10 @@ public:
     virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_);
     //! 通过node id 发送消息给broker
     void send_to_broker_by_nodeid(uint32_t node_id_, const string& body_, uint32_t msg_id_ = 0, uint32_t callback_id_ = 0);
+    //! 获取任务队列对象
+    task_queue_t& get_tq();
+    //! 定时重连 broker master
+    void timer_reconnect_broker();
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -61,7 +66,13 @@ private:
     int register_all_interface(socket_ptr_t sock);
     int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
     int handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
+
+    //! 连接到broker master
+    socket_ptr_t connect_to_broker(const string& host_, uint32_t node_id_);
+    
 private:
+    string                                  m_host;
+    timer_service_t                         m_timer;
     string                                  m_service_name;//! 注册的服务名称
     uint32_t                                m_node_id;     //! 通过注册broker，分配的node id
     uint32_t                                m_bind_broker_id;//! 若不为0， 则为固定绑定一个node id

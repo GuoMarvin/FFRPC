@@ -937,14 +937,13 @@ struct broker_sync_all_registered_data_t
     {
         virtual void encode(bin_encoder_t& be_) const
         {
-            be_ << host << port;
+            be_ << host;
         }
         virtual void decode(bin_decoder_t& bd_)
         {
-            bd_ >> host >> port;
+            bd_ >> host;
         }
         string          host;
-        int32_t         port;
     };
 
     struct broker_client_info_t: public codec_helper_i

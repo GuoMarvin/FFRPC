@@ -105,7 +105,6 @@ int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socke
     sock_->set_data(psession);
     slave_broker_info_t& slave_broker_info = m_slave_broker_sockets[psession->get_node_id()];
     slave_broker_info.host = msg_.host;
-    slave_broker_info.port = msg_.port;
     slave_broker_info.sock = sock_;
     sync_all_register_info(sock_);
     LOGTRACE((BROKER, "ffbroker_t::handle_slave_register end ok"));
@@ -171,7 +170,6 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
          it != m_slave_broker_sockets.end(); ++it)
     {
         msg.slave_broker_info[it->first].host = it->second.host;
-        msg.slave_broker_info[it->first].port = it->second.port;
     }
     
     //! 给所有已注册的broker slave节点推送所有的消息

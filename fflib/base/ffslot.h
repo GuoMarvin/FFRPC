@@ -30,18 +30,7 @@ public:
 public:
     virtual ~ffslot_t()
     {
-        map<int, callback_t*>::iterator it = m_cmd2callback.begin();
-        for (; it != m_cmd2callback.end(); ++it)
-        {
-            delete it->second;
-        }
-        map<string, callback_t*>::iterator it2 = m_name2callback.begin();
-        for (; it2 != m_name2callback.end(); ++it2)
-        {
-            delete it2->second;
-        }
-        m_cmd2callback.clear();
-        m_name2callback.clear();
+        clear();
     }
     ffslot_t& bind(int cmd_, callback_t* callback_)
     {
@@ -90,6 +79,21 @@ public:
             delete it->second;
             m_name2callback.erase(it);
         }
+    }
+    void clear()
+    {
+        map<int, callback_t*>::iterator it = m_cmd2callback.begin();
+        for (; it != m_cmd2callback.end(); ++it)
+        {
+            delete it->second;
+        }
+        map<string, callback_t*>::iterator it2 = m_name2callback.begin();
+        for (; it2 != m_name2callback.end(); ++it2)
+        {
+            delete it2->second;
+        }
+        m_cmd2callback.clear();
+        m_name2callback.clear();
     }
 private:
     map<int, callback_t*>       m_cmd2callback;
