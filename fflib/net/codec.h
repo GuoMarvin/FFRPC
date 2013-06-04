@@ -917,14 +917,13 @@ struct register_broker_client_t
     {
         virtual string encode()
         {
-            return (init_encoder() << service_name << service_id << bind_broker_id << msg_names).get_buff() ;
+            return (init_encoder() << service_name << bind_broker_id << msg_names).get_buff() ;
         }
         virtual void decode(const string& src_buff_)
         {
-            init_decoder(src_buff_) >> service_name >> service_id >> bind_broker_id >> msg_names;
+            init_decoder(src_buff_) >> service_name >> bind_broker_id >> msg_names;
         }
         string                      service_name;
-        uint16_t                    service_id;
         uint32_t                    bind_broker_id;//! 是否需要绑定到特定的broker上
         std::set<string>            msg_names;
     };
@@ -952,16 +951,15 @@ struct broker_sync_all_registered_data_t
     {
         virtual void encode(bin_encoder_t& be_) const
         {
-            be_ << bind_broker_id << service_name << service_id;
+            be_ << bind_broker_id << service_name;
         }
         virtual void decode(bin_decoder_t& bd_)
         {
-            bd_ >> bind_broker_id >> service_name >> service_id;
+            bd_ >> bind_broker_id >> service_name;
         }
         //! 被绑定的节点broker node id
         uint32_t bind_broker_id;
         string   service_name;
-        uint16_t service_id;
     };
     struct out_t: public ffmsg_t<out_t>
     {

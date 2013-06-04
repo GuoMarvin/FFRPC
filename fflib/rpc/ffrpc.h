@@ -24,7 +24,7 @@ class ffrpc_t: public msg_handler_i, ffresponser_t
     struct slave_broker_info_t;
     struct broker_client_info_t;
 public:
-    ffrpc_t(const string& service_name_, uint16_t service_id_ = 0);
+    ffrpc_t(const string& service_name_);
     virtual ~ffrpc_t();
 
     int open(const string& opt_);
@@ -42,7 +42,7 @@ public:
     
     //! 调用远程的接口
     template <typename T>
-    int call(const string& name_, uint16_t index_, T& req_, ffslot_t::callback_t* callback_ = NULL);
+    int call(const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     
     uint32_t get_callback_id() { return ++m_callback_id; }
     //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
@@ -63,7 +63,6 @@ private:
     int handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
 private:
     string                                  m_service_name;//! 注册的服务名称
-    uint16_t                                m_service_id;  //! 服务的索引号
     uint32_t                                m_node_id;     //! 通过注册broker，分配的node id
     uint32_t                                m_bind_broker_id;//! 若不为0， 则为固定绑定一个node id
     uint32_t                                m_callback_id;//! 回调函数的唯一id值
@@ -125,12 +124,9 @@ struct ffrpc_t::broker_client_info_t
 
 //! 调用远程的接口
 template <typename T>
-int ffrpc_t::call(const string& name_, uint16_t index_, T& req_, ffslot_t::callback_t* callback_)
+int ffrpc_t::call(const string& name_, T& req_, ffslot_t::callback_t* callback_)
 {
-    char name[512];
-    GEN_SERVICE_NAME(name, name_.c_str(), index_);
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, string(name), TYPE_NAME(T), req_.encode(), callback_));
-    
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), req_.encode(), callback_));   
     return 0;
 }
 

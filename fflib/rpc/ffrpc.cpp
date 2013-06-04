@@ -7,9 +7,8 @@ using namespace ff;
 
 #define FFRPC                   "FFRPC"
 
-ffrpc_t::ffrpc_t(const string& service_name_, uint16_t service_id_):
+ffrpc_t::ffrpc_t(const string& service_name_):
     m_service_name(service_name_),
-    m_service_id(service_id_),
     m_node_id(0),
     m_bind_broker_id(0),
     m_callback_id(0),
@@ -61,7 +60,6 @@ int ffrpc_t::register_all_interface(socket_ptr_t sock)
 {
     register_broker_client_t::in_t msg;
     msg.service_name = m_service_name;
-    msg.service_id   = m_service_id;
     msg.bind_broker_id = m_bind_broker_id;
     
     for (map<string, ffslot_t::callback_t*>::iterator it = m_reg_iterface.begin(); it != m_reg_iterface.end(); ++it)
@@ -90,8 +88,15 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
         sock_->safe_delete();
         return 0;
     }
-    m_slave_broker_sockets.erase(sock_->get_data<session_data_t>()->get_node_id());
-    m_broker_client_info.erase(sock_->get_data<session_data_t>()->get_node_id());
+    if (BROKER_MASTER_NODE_ID == sock_->get_data<session_data_t>()->get_node_id())
+    {
+        m_master_broker_sock = NULL;
+    }
+    else
+    {
+        m_slave_broker_sockets.erase(sock_->get_data<session_data_t>()->get_node_id());
+        m_broker_client_info.erase(sock_->get_data<session_data_t>()->get_node_id());
+    }
     delete sock_->get_data<session_data_t>();
     sock_->set_data(NULL);
     sock_->safe_delete();
@@ -161,12 +166,9 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
         ffrpc_t::broker_client_info_t& broker_client_info = m_broker_client_info[it4->first];
         broker_client_info.bind_broker_id = it4->second.bind_broker_id;
         broker_client_info.service_name   = it4->second.service_name;
-        broker_client_info.service_id     = it4->second.service_id;
 
-        char name[512];
-        GEN_SERVICE_NAME(name, broker_client_info.service_name.c_str(), broker_client_info.service_id);
-        m_broker_client_name2nodeid[name] = it4->first;
-        LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data name[%s] -> node id[%u]", name, it4->first));
+        m_broker_client_name2nodeid[broker_client_info.service_name] = it4->first;
+        LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data name[%s] -> node id[%u]", broker_client_info.service_name, it4->first));
     }
     LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data end ok"));
     return 0;

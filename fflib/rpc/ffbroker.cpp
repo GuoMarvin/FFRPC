@@ -121,12 +121,11 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
          it != m_broker_client_info.end(); ++it)
     {
         broker_client_info_t& broker_client_info = it->second;
-        if (broker_client_info.service_name == msg_.service_name &&
-            broker_client_info.service_id   == msg_.service_id)
+        if (broker_client_info.service_name == msg_.service_name)
         {
             sock_->close();
-            LOGTRACE((BROKER, "ffbroker_t::handle_client_register service<%s>,id<%u> has been registed",
-                                msg_.service_name.c_str(), msg_.service_id));
+            LOGTRACE((BROKER, "ffbroker_t::handle_client_register service<%s> has been registed",
+                                msg_.service_name.c_str()));
             return -1;
         }
     }
@@ -139,7 +138,6 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
     broker_client_info_t& broker_client_info = m_broker_client_info[psession->get_node_id()];
     broker_client_info.bind_broker_id        = msg_.bind_broker_id;
     broker_client_info.service_name          = msg_.service_name;
-    broker_client_info.service_id            = msg_.service_id;
     broker_client_info.sock                  = sock_;
 
     for (std::set<string>::iterator it = msg_.msg_names.begin(); it != msg_.msg_names.end(); ++it)
@@ -167,7 +165,6 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
     {
         msg.broker_client_info[it->first].bind_broker_id      = it->second.bind_broker_id;
         msg.broker_client_info[it->first].service_name        = it->second.service_name;
-        msg.broker_client_info[it->first].service_id          = it->second.service_id;
     }
     //! 把所有已注册的broker slave节点赋值到消息
     for (map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();

@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     int a = 199;
     static int g_int = 33445;
     const char* pstr = "ohnice";
-    ffrpc.call("echo", 0, in, ffrpc_ops_t::gen_callback(&foo_t::echo, &foo, a, "nihao", &g_int, pstr));
+    ffrpc.call("echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo, &foo, a, "nihao", &g_int, pstr));
     
     sleep(300);
     ffbroker.close();

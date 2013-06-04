@@ -90,7 +90,6 @@ struct ffbroker_t::broker_client_info_t
     //! 被绑定的节点broker node id
     uint32_t bind_broker_id;
     string   service_name;
-    uint16_t service_id;
     socket_ptr_t sock;
 };
 //! 记录每个broker slave 的接口信息
