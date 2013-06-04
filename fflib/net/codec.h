@@ -19,22 +19,36 @@ using namespace std;
 
 namespace ff {
 
-class bin_encoder_t;
-class bin_decoder_t;
+#define GEN_CODE_DECODE(X) \
+    bin_decoder_t& operator >> (X& dest_)       \
+    {                                           \
+        return copy_value(&dest_, sizeof(X));   \
+    }
+
+
+#define GEN_CODE_ENCODE(X)                                      \
+    bin_encoder_t& operator << (const X& var_)                  \
+    {                                                           \
+        return copy_value((const char*)(&var_), sizeof(var_));  \
+    }
+
 
 struct codec_i
 {
     virtual ~codec_i(){}
-    virtual string encode()                      = 0;
-    virtual void decode(const string& src_buff_) = 0;
+    virtual string encode_data()                      = 0;
+    virtual void decode_data(const string& src_buff_) = 0;
 };
 
+class bin_encoder_t;
+class bin_decoder_t;
 struct codec_helper_i
 {
     virtual ~codec_helper_i(){}
     virtual void encode(bin_encoder_t&) const = 0;
     virtual void decode(bin_decoder_t&)       = 0;
 };
+
 
 template<typename T>
 struct option_t: public shared_ptr_t<T>
@@ -82,11 +96,126 @@ struct option_t: public shared_ptr_t<T>
     T* data;
 };
 
-#define GEN_CODE_DECODE(X) \
-    bin_decoder_t& operator >> (X& dest_)       \
-    {                                           \
-        return copy_value(&dest_, sizeof(X));   \
+class bin_encoder_t
+{
+public:
+    bin_encoder_t(){}
+    bin_encoder_t& init()
+    {
+        return *this;
     }
+
+    const string& get_buff() const { return m_dest_buff; }
+
+    GEN_CODE_ENCODE(bool)
+    GEN_CODE_ENCODE(int8_t)
+    GEN_CODE_ENCODE(uint8_t)
+    GEN_CODE_ENCODE(int16_t)
+    GEN_CODE_ENCODE(uint16_t)
+    GEN_CODE_ENCODE(int32_t)
+    GEN_CODE_ENCODE(uint32_t)
+    GEN_CODE_ENCODE(int64_t)
+    GEN_CODE_ENCODE(uint64_t)
+    
+    bin_encoder_t& operator << (const string& str_)
+    {
+        return copy_value(str_);
+    }
+    
+    template<typename T>
+    bin_encoder_t& operator <<(const vector<T>& src_vt_)
+    {
+        uint32_t vt_size = (uint32_t)src_vt_.size();
+        copy_value((const char*)(&vt_size), sizeof(vt_size));
+
+        for (uint32_t i = 0; i < vt_size; ++i)
+        {
+            (*this) << src_vt_[i];
+        }
+        return *this;
+    }
+    template<typename T>
+    bin_encoder_t& operator <<(const list<T>& src_vt_)
+    {
+        uint32_t vt_size = (uint32_t)src_vt_.size();
+        copy_value((const char*)(&vt_size), sizeof(vt_size));
+        typename list<T>::iterator it = src_vt_.begin();
+        for (; it != src_vt_.end(); ++it)
+        {
+            (*this) << *it;
+        }
+        return *this;
+    }
+    template<typename T>
+    bin_encoder_t& operator <<(const set<T>& src_vt_)
+    {
+        uint32_t vt_size = (uint32_t)src_vt_.size();
+        copy_value((const char*)(&vt_size), sizeof(vt_size));
+        typename set<T>::iterator it = src_vt_.begin();
+        for (; it != src_vt_.end(); ++it)
+        {
+            (*this) << *it;
+        }
+        return *this;
+    }
+    template<typename T, typename R>
+    bin_encoder_t& operator <<(const map<T, R>& src_)
+    {
+        uint32_t size = (uint32_t)src_.size();
+        copy_value((const char*)(&size), sizeof(size));
+        
+        typename map<T, R>::const_iterator it = src_.begin();
+        for (; it != src_.end(); ++it)
+        {
+            (*this) << it->first << it->second;
+        }
+        return *this;
+    }
+
+
+    bin_encoder_t& operator <<(codec_i& dest_)
+    {
+        string data = dest_.encode_data();
+        *this << data;
+        return *this;
+    }
+    template<typename T>
+    bin_encoder_t& operator <<(option_t<T>& dest_)
+    {
+        uint8_t flag = 0;
+        if (dest_.get())
+        {
+            flag = 1;
+            *this << flag;
+            *this << *(dest_);
+        }
+        else
+        {
+            *this << flag;
+        }
+        return *this;
+    }
+    void clear()
+    {
+        m_dest_buff.clear();
+    }
+private:
+    inline bin_encoder_t& copy_value(const string& str_)
+    {
+        uint32_t str_size = str_.size();
+        copy_value((const char*)(&str_size), sizeof(str_size));
+        copy_value(str_.data(), str_.size());
+        return *this;
+    }
+    inline bin_encoder_t& copy_value(const void* src_, size_t size_)
+    {
+        m_dest_buff.append((const char*)(src_), size_);
+        return *this;
+    }
+
+private:
+    string         m_dest_buff;
+};
 
 class bin_decoder_t
 {
@@ -178,9 +307,11 @@ public:
         return *this;
     }
     
-    bin_decoder_t& operator >>(codec_helper_i& dest_)
+    bin_decoder_t& operator >>(codec_i& dest_)
     {
-        dest_.decode(*this);
+        string data;
+        *this >> data;
+        dest_.decode_data(data);
         return *this;
     }
     template<typename T>
@@ -234,653 +365,44 @@ private:
     size_t       m_remaindered;
 };
 
-#define GEN_CODE_ENCODE(X)                                      \
-    bin_encoder_t& operator << (const X& var_)                  \
-    {                                                           \
-        return copy_value((const char*)(&var_), sizeof(var_));  \
-    }
 
-class bin_encoder_t
+class msg_i : public codec_i
 {
 public:
-    bin_encoder_t(){}
-    bin_encoder_t& init()
-    {
-        return *this;
-    }
-
-    const string& get_buff() const { return m_dest_buff; }
-
-    GEN_CODE_ENCODE(bool)
-    GEN_CODE_ENCODE(int8_t)
-    GEN_CODE_ENCODE(uint8_t)
-    GEN_CODE_ENCODE(int16_t)
-    GEN_CODE_ENCODE(uint16_t)
-    GEN_CODE_ENCODE(int32_t)
-    GEN_CODE_ENCODE(uint32_t)
-    GEN_CODE_ENCODE(int64_t)
-    GEN_CODE_ENCODE(uint64_t)
-    
-    bin_encoder_t& operator << (const string& str_)
-    {
-        return copy_value(str_);
-    }
-    
-    template<typename T>
-    bin_encoder_t& operator <<(const vector<T>& src_vt_)
-    {
-        uint32_t vt_size = (uint32_t)src_vt_.size();
-        copy_value((const char*)(&vt_size), sizeof(vt_size));
-
-        for (uint32_t i = 0; i < vt_size; ++i)
-        {
-            (*this) << src_vt_[i];
-        }
-        return *this;
-    }
-    template<typename T>
-    bin_encoder_t& operator <<(const list<T>& src_vt_)
-    {
-        uint32_t vt_size = (uint32_t)src_vt_.size();
-        copy_value((const char*)(&vt_size), sizeof(vt_size));
-        typename list<T>::iterator it = src_vt_.begin();
-        for (; it != src_vt_.end(); ++it)
-        {
-            (*this) << *it;
-        }
-        return *this;
-    }
-    template<typename T>
-    bin_encoder_t& operator <<(const set<T>& src_vt_)
-    {
-        uint32_t vt_size = (uint32_t)src_vt_.size();
-        copy_value((const char*)(&vt_size), sizeof(vt_size));
-        typename set<T>::iterator it = src_vt_.begin();
-        for (; it != src_vt_.end(); ++it)
-        {
-            (*this) << *it;
-        }
-        return *this;
-    }
-    template<typename T, typename R>
-    bin_encoder_t& operator <<(const map<T, R>& src_)
-    {
-        uint32_t size = (uint32_t)src_.size();
-        copy_value((const char*)(&size), sizeof(size));
-        
-        typename map<T, R>::const_iterator it = src_.begin();
-        for (; it != src_.end(); ++it)
-        {
-            (*this) << it->first << it->second;
-        }
-        return *this;
-    }    
-    bin_encoder_t& operator <<(const codec_helper_i& dest_)
-    {
-        dest_.encode(*this);
-        return *this;
-    }
-    template<typename T>
-    bin_encoder_t& operator <<(option_t<T>& dest_)
-    {
-        uint8_t flag = 0;
-        if (dest_.get())
-        {
-            flag = 1;
-            *this << flag;
-            *this << *(dest_);
-        }
-        else
-        {
-            *this << flag;
-        }
-        return *this;
-    }
-private:
-    inline bin_encoder_t& copy_value(const string& str_)
-    {
-        uint32_t str_size = str_.size();
-        copy_value((const char*)(&str_size), sizeof(str_size));
-        copy_value(str_.data(), str_.size());
-        return *this;
-    }
-    inline bin_encoder_t& copy_value(const void* src_, size_t size_)
-    {
-        m_dest_buff.append((const char*)(src_), size_);
-        return *this;
-    }
-
-private:
-    string         m_dest_buff;
-};
-    
-struct rpc_msg_cmd_e
-{
-    enum
-    {
-        CREATE_SERVICE_GROUP     = 1,
-        CREATE_SERVICE_GROUP_RET = 2,
-        CREATE_SERVICE           = 3,
-        CREATE_SERVICE_RET       = 4,
-        REG_INTERFACE            = 5,
-        REG_INTERFACE_RET        = 6,
-        SYNC_ALL_SERVICE         = 7,
-        SYNC_ALL_SERVICE_RET     = 8,
-        CALL_INTERFACE           = 9,
-        CALL_INTERFACE_RET       = 10,
-        INTREFACE_CALLBACK       = 11,
-        INTREFACE_CALLBACK_RE    = 12,
-        PUSH_INIT_DATA           = 13,
-        PUSH_ADD_SERVICE_GROUP   = 14,
-        PUSH_ADD_SERVICE         = 15,
-        PUSH_ADD_MSG             = 16,
-        REG_SLAVE_BROKER         = 17
-    };
-};
-
-struct msg_name_store_t
-{
-    struct data_t
-    {
-        string                m_null_str;
-        map<string, uint16_t> m_name_to_id;
-        map<uint16_t, string> m_id_to_name;
-    };
-    msg_name_store_t():
-        m_data(new data_t())
-    {
-        m_data_history.push_back(m_data);
-        this->set_msg_name2id(m_data, "create_service_group_t::in_t", rpc_msg_cmd_e::CREATE_SERVICE_GROUP);
-        this->set_msg_name2id(m_data, "create_service_group_t::out_t", rpc_msg_cmd_e::CREATE_SERVICE_GROUP_RET);
-        this->set_msg_name2id(m_data, "create_service_t::in_t", rpc_msg_cmd_e::CREATE_SERVICE);
-        this->set_msg_name2id(m_data, "create_service_t::out_t", rpc_msg_cmd_e::CREATE_SERVICE_RET);
-        this->set_msg_name2id(m_data, "reg_interface_t::in_t", rpc_msg_cmd_e::REG_INTERFACE);
-        this->set_msg_name2id(m_data, "reg_interface_t::out_t", rpc_msg_cmd_e::REG_INTERFACE_RET);
-        this->set_msg_name2id(m_data, "sync_all_service_t::in_t", rpc_msg_cmd_e::SYNC_ALL_SERVICE);
-        this->set_msg_name2id(m_data, "sync_all_service_t::out_t", rpc_msg_cmd_e::SYNC_ALL_SERVICE_RET);
-        this->set_msg_name2id(m_data, "push_init_data_t::in_t", rpc_msg_cmd_e::PUSH_INIT_DATA);
-        this->set_msg_name2id(m_data, "push_add_service_group_t::in_t", rpc_msg_cmd_e::PUSH_ADD_SERVICE_GROUP);
-        this->set_msg_name2id(m_data, "push_add_service_t::in_t", rpc_msg_cmd_e::PUSH_ADD_SERVICE);
-        this->set_msg_name2id(m_data, "push_set_msg_name2id_t::in_t", rpc_msg_cmd_e::PUSH_ADD_MSG);
-        this->set_msg_name2id(m_data, "reg_slave_broker_t::in_t", rpc_msg_cmd_e::REG_SLAVE_BROKER);
-    }
-    ~msg_name_store_t()
-    {
-        for (size_t i = 0; i < m_data_history.size(); ++i)
-        {
-            delete m_data_history[i];
-        }
-        m_data_history.clear();
-    }
-    template<typename MSG>
-    void add_msg(uint16_t id_)
-    {
-        MSG tmp;
-        this->add_msg(tmp.get_name(), id_);
-    }
-    void set_msg_name2id(data_t* data_, const string& name_, uint16_t id_)
-    {
-        data_->m_name_to_id[name_] = id_;
-        data_->m_id_to_name[id_]   = name_;
-    }
-    void add_msg(const string& name_, uint16_t id_)
-    {
-        data_t* pdata = ATOMIC_FETCH(&m_data);
-        if (pdata->m_name_to_id.find(name_) != pdata->m_name_to_id.end())
-        {
-            return;
-        }
-        data_t* new_data = new data_t();
-        new_data->m_name_to_id = pdata->m_name_to_id;
-        new_data->m_id_to_name = pdata->m_id_to_name;
-        this->set_msg_name2id(new_data, name_, id_);
-        ATOMIC_SET(&m_data, new_data);
-        lock_guard_t lock(m_mutex);
-        m_data_history.push_back(new_data);
-    }
-    uint16_t name_to_id(const string& name_)
-    {
-        data_t* pdata = ATOMIC_FETCH(&m_data);
-        map<string, uint16_t>::iterator it = pdata->m_name_to_id.find(name_);
-        if (it != pdata->m_name_to_id.end())
-        {
-            return it ->second;
-        }
-        return 0;
-    }
-    const string& id_to_name(uint16_t id_)
-    {
-        data_t* pdata = ATOMIC_FETCH(&m_data);
-        map<uint16_t, string>::iterator it = pdata->m_id_to_name.find(id_);
-        if (it != pdata->m_id_to_name.end())
-        {
-            return it ->second;
-        }
-        return pdata->m_null_str;
-    }
-    map<string, uint16_t>& all_msg()
-    {
-        data_t* pdata = ATOMIC_FETCH(&m_data);
-        return pdata->m_name_to_id;
-    }
-    data_t*             m_data;
-    vector<data_t*>     m_data_history;
-    mutex_t             m_mutex;
-};
-
-template<typename T>
-struct  msg_traits_t
-{
-    msg_traits_t():msg_id(0){}
-    
-    uint16_t get_id()
-    {
-        if (0 == msg_id)
-        {
-            T tmp;
-            msg_id = singleton_t<msg_name_store_t>::instance().name_to_id(tmp.get_name());   
-        }
-        return msg_id;
-    }
-    uint16_t msg_id;
-};
-
-struct msg_i : public codec_i
-{
+    virtual ~msg_i(){}
     msg_i(const char* msg_name_):
-        cmd(0),
-        uuid(0),
-        service_group_id(0),
-        service_id(0),
-        msg_id(0),
-        msg_name(msg_name_),
-        encode_name(false)
+        m_msg_name(msg_name_)
     {}
-    
-    void set(uint16_t group_id, uint16_t id_, uint32_t uuid_, uint16_t msg_id_)
+    const char* get_type_name()  const
     {
-        service_group_id = group_id;
-        service_id       = id_;
-        uuid             = uuid_;
-        msg_id           = msg_id_;
+        return m_msg_name;
     }
-
-    uint16_t cmd;
-    uint16_t get_group_id()   const{ return service_group_id; }
-    uint16_t get_service_id() const{ return service_id;       }
-    uint32_t get_uuid()       const{ return uuid;             }
-    
-    uint16_t get_msg_id()     const{ return msg_id;           }
-    const string& get_name()  const
+    bin_encoder_t& encoder()
     {
-        if (msg_name.empty() == false)
-        {
-            return msg_name;
-        }
-        return singleton_t<msg_name_store_t>::instance().id_to_name(this->get_msg_id());
+        return m_encoder;
     }
-    
-    void     set_uuid(uint32_t id_)   { uuid = id_;  }
-    void     set_msg_id(uint16_t id_) { msg_id = id_;}
-    void     set_sgid(uint16_t sgid_) { service_group_id = sgid_;}
-    void     set_sid(uint16_t sid_)   { service_id = sid_; }
-    uint32_t uuid;
-    uint16_t service_group_id;
-    uint16_t service_id;
-    uint16_t msg_id;
-    string   msg_name;
-
-
-    bin_encoder_t& init_encoder()
+    bin_decoder_t& decoder()
     {
-        if (false == encode_name)
-        {
-            return encoder.init() << uuid << service_group_id << service_id << msg_id;
-        }
-        else
-        {
-            return encoder.init() << msg_name;
-        }
+        return m_decoder;
     }
-    bin_decoder_t& init_decoder(const string& buff_)
+    virtual string encode_data()
     {
-        return decoder.init(buff_) >> uuid >> service_group_id >> service_id >> msg_id;
+        m_encoder.clear();
+        encode();
+        return m_encoder.get_buff();
     }
-    
-    void set_gate() { encode_name = true; }
-    bin_decoder_t decoder;
-    bin_encoder_t encoder;
-    bool          encode_name;
-};
-
-struct base_msg_t: public msg_i
-{
-    base_msg_t(const char* name_):
-        msg_i(name_)
-    {}
-    virtual string encode()
+    virtual void decode_data(const string& src_buff_)
     {
-        return init_encoder().get_buff();
+        m_decoder.init(src_buff_);
+        decoder();
     }
-    virtual void decode(const string& src_buff_)
-    {
-        init_decoder(src_buff_);
-    }
+    virtual void encode()                      = 0;
+    virtual void decode()                      = 0;
+    const char*   m_msg_name;
+    bin_encoder_t m_encoder;
+    bin_decoder_t m_decoder;
 };
 
-struct msg_tool_t: public base_msg_t
-{
-    msg_tool_t():
-        base_msg_t("")
-    {}
-};
-    
-struct gate_msg_tool_t: public msg_i
-{
-    gate_msg_tool_t():
-        msg_i("")
-    {}
-    virtual string encode()
-    {
-        string dest = init_encoder().get_buff();
-        return dest += packet_body.substr(4 + msg_name.size());
-    }
-    virtual void gate_decode(const string& src_buff_)
-    {
-        packet_body = src_buff_;
-        decoder.init(src_buff_) >> msg_i::msg_name;
-    }
-    virtual void decode(const string& src_buff_)
-    {
-        init_decoder(src_buff_);
-    }
-    string packet_body;
-};
-
-struct client_msg_i : public codec_i
-{
-    client_msg_i(const char* msg_name_):
-        msg_name(msg_name_)
-    {}
-    
-    const string& get_name()  const {return msg_name;}
-
-    bin_encoder_t& init_encoder()
-    {
-        return encoder.init() << msg_name;
-    }
-    bin_decoder_t& init_decoder(const string& buff_)
-    {
-        return decoder.init(buff_) >> msg_name;
-    }
-
-    string        msg_name;
-    bin_decoder_t decoder;
-    bin_encoder_t encoder;
-};
-
-
-struct bool_ret_msg_t: public msg_i
-{
-    bool_ret_msg_t(const char* name_ = "bool_ret_msg_t"):
-        msg_i(name_),
-        value(false)
-    {}
-    virtual string encode()
-    {
-        return (init_encoder()<< value).get_buff();
-    }
-    virtual void decode(const string& src_buff_)
-    {
-        init_decoder(src_buff_) >> value;
-    }
-    bool value;
-};
-
-struct create_service_group_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("create_service_group_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder()<< service_name).get_buff();
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> service_name;
-        }
-        string service_name;
-    };
-    struct out_t: public msg_i
-    {
-        out_t():
-            msg_i("create_service_group_t::out_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder()<< service_id).get_buff();
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> service_id;
-        }
-        uint16_t service_id;
-    };
-};
-
-struct create_service_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("create_service_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder()<< new_service_group_id << new_service_id).get_buff();
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> new_service_group_id >> new_service_id;
-        }
-        uint16_t new_service_group_id;
-        uint16_t new_service_id;
-    };
-    struct out_t: public bool_ret_msg_t
-    {
-        out_t(): bool_ret_msg_t("create_service_group_t::out_t"){}
-    };
-};
-
-struct reg_interface_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("reg_interface_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder()<< sgid << sid << in_msg_name << out_msg_name).get_buff();
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> sgid >> sid >> in_msg_name >> out_msg_name;
-        }
-        uint16_t sgid;
-        uint16_t sid;
-        string in_msg_name;
-        string out_msg_name;
-    };
-    struct out_t: public msg_i
-    {
-        out_t():
-            msg_i("reg_interface_t::out_t"),
-            alloc_id(0),
-            out_alloc_id(0)
-        {}
-        virtual string encode()
-        {
-            return (init_encoder()<< alloc_id << out_alloc_id).get_buff();
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> alloc_id >> out_alloc_id;
-        }
-        uint16_t alloc_id;
-        uint16_t out_alloc_id;
-    };
-};
-
-struct sync_all_service_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("sync_all_service_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder() << slave_host).get_buff() ;
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> slave_host;
-        }
-
-        string slave_host;
-    };
-    struct out_t: public bool_ret_msg_t
-    {
-        out_t(): bool_ret_msg_t("sync_all_service_t::out_t"){}
-    };
-};
-
-struct push_init_data_t
-{
-    struct id_info_t: public codec_helper_i
-    {
-        virtual void encode(bin_encoder_t& be_) const
-        {
-            be_ << sgid << sid << node_id;
-        }
-        virtual void decode(bin_decoder_t& bd_)
-        {
-            bd_ >> sgid >> sid >> node_id;
-        }
-        uint16_t sgid;
-        uint16_t sid;
-        uint16_t node_id;
-    };
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("push_init_data_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder()<< group_name_vt << group_id_vt << id_info_vt << msg_name_vt << msg_id_vt << node_id << bind_id << broker_slave_host).get_buff() ;
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> group_name_vt >> group_id_vt >> id_info_vt >> msg_name_vt >> msg_id_vt >> node_id >> bind_id >> broker_slave_host;
-        }
-        vector<string>      group_name_vt;
-        vector<uint16_t>    group_id_vt;
-        
-        vector<id_info_t>   id_info_vt;
-        vector<string>      msg_name_vt;
-        vector<uint16_t>    msg_id_vt;
-        
-        uint32_t            node_id;
-        uint32_t            bind_id;
-        
-        vector<string>      broker_slave_host;
-    };
-};
-        
-struct push_add_service_group_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("push_add_service_group_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder() << name << sgid).get_buff() ;
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> name >> sgid;
-        }
-        string      name;
-        uint16_t    sgid;
-    };
-};
-
-struct push_add_service_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("push_add_service_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder() << sgid << sid << node_id).get_buff() ;
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> sgid >> sid >> node_id;
-        }
-        uint16_t    sgid;
-        uint16_t    sid;
-        uint16_t    node_id;
-    };
-};
-
-struct push_add_msg_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("push_add_msg_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder() << name << msg_id).get_buff() ;
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> name >> msg_id;
-        }
-        string      name;
-        uint16_t    msg_id;
-    };
-};
-
-struct reg_slave_broker_t
-{
-    struct in_t: public msg_i
-    {
-        in_t():
-            msg_i("reg_slave_broker_t::in_t")
-        {}
-        virtual string encode()
-        {
-            return (init_encoder() << node_id).get_buff() ;
-        }
-        virtual void decode(const string& src_buff_)
-        {
-            init_decoder(src_buff_) >> node_id;
-        }
-        uint16_t    node_id;
-    };
-};
 
 template<typename T>
 class ffmsg_t: public msg_i
@@ -892,19 +414,18 @@ public:
     virtual ~ffmsg_t(){}
 };
 
-typedef bool_ret_msg_t ffmsg_bool_t;
 //! 向broker master 注册slave
 struct register_slave_broker_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
-        virtual string encode()
+        void encode()
         {
-            return (init_encoder() << host).get_buff() ;
+            encoder() << host;
         }
-        virtual void decode(const string& src_buff_)
+        void decode()
         {
-            init_decoder(src_buff_) >> host;
+            decoder()>> host;
         }
         string          host;
     };
@@ -915,13 +436,13 @@ struct register_broker_client_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
-        virtual string encode()
+        void encode()
         {
-            return (init_encoder() << service_name << bind_broker_id << msg_names).get_buff() ;
+            encoder() << service_name << bind_broker_id << msg_names;
         }
-        virtual void decode(const string& src_buff_)
+        void decode()
         {
-            init_decoder(src_buff_) >> service_name >> bind_broker_id >> msg_names;
+            decoder() >> service_name >> bind_broker_id >> msg_names;
         }
         string                      service_name;
         uint32_t                    bind_broker_id;//! 是否需要绑定到特定的broker上
@@ -933,13 +454,13 @@ struct register_client_to_slave_broker_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
-        virtual string encode()
+        void encode()
         {
-            return (init_encoder() << node_id).get_buff() ;
+            encoder() << node_id;
         }
-        virtual void decode(const string& src_buff_)
+        void decode()
         {
-            init_decoder(src_buff_) >> node_id;
+            decoder() >> node_id;
         }
         uint32_t                    node_id;//! master分配client的node id
     };
@@ -948,28 +469,28 @@ struct register_client_to_slave_broker_t
 struct broker_sync_all_registered_data_t
 {
     //! 记录每个broker slave 的接口信息
-    struct slave_broker_info_t: public codec_helper_i
+    struct slave_broker_info_t: public ffmsg_t<slave_broker_info_t>
     {
-        virtual void encode(bin_encoder_t& be_) const
+        void encode()
         {
-            be_ << host;
+            encoder() << host;
         }
-        virtual void decode(bin_decoder_t& bd_)
+        void decode()
         {
-            bd_ >> host;
+            decoder() >> host;
         }
         string          host;
     };
 
-    struct broker_client_info_t: public codec_helper_i
+    struct broker_client_info_t: public ffmsg_t<broker_client_info_t>
     {
-        virtual void encode(bin_encoder_t& be_) const
+        void encode()
         {
-            be_ << bind_broker_id << service_name;
+            encoder() << bind_broker_id << service_name;
         }
-        virtual void decode(bin_decoder_t& bd_)
+        void decode()
         {
-            bd_ >> bind_broker_id >> service_name;
+            decoder() >> bind_broker_id >> service_name;
         }
         //! 被绑定的节点broker node id
         uint32_t bind_broker_id;
@@ -980,13 +501,13 @@ struct broker_sync_all_registered_data_t
         out_t():
             node_id(0)
         {}
-        virtual string encode()
+        void encode()
         {
-            return (init_encoder() << node_id << msg2id << broker_client_info).get_buff() ;
+            encoder() << node_id << msg2id ;//TODO<< slave_broker_info << broker_client_info;
         }
-        virtual void decode(const string& src_buff_)
+        void decode()
         {
-            init_decoder(src_buff_) >> node_id >> msg2id >> broker_client_info;
+            decoder() >> node_id >> msg2id ;//!TODO >> slave_broker_info >> broker_client_info;
         }
         uint32_t                                node_id;//! 被分配的node id
         map<string, uint32_t>                   msg2id; //! 消息名称对应的消息id 值
@@ -1001,13 +522,13 @@ struct broker_route_t//!broker 转发消息
 {
     struct in_t: public ffmsg_t<in_t>
     {
-        virtual string encode()
+        void encode()
         {
-            return (init_encoder() << node_id << msg_id << callback_id << body).get_buff() ;
+            encoder() << node_id << msg_id << callback_id << body;
         }
-        virtual void decode(const string& src_buff_)
+        void decode()
         {
-            init_decoder(src_buff_) >> node_id >> msg_id >> callback_id >> body;
+            decoder() >> node_id >> msg_id >> callback_id >> body;
         }
         uint32_t                    node_id;//! 需要转发到哪个节点上
         uint32_t                    msg_id;//! 调用的是哪个接口

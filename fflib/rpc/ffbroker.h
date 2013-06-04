@@ -41,6 +41,8 @@ public:
     uint32_t alloc_id();
     //! 获取任务队列对象
     task_queue_t& get_tq();
+    //! 定时器
+    timer_service_t& get_timer();
     
     //! 连接到broker master
     int connect_to_master_broker();
@@ -59,7 +61,8 @@ private:
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
     //! 处理broker client连接到broker slave的消息
     int handle_client_register_slave_broker(register_client_to_slave_broker_t::in_t& msg_, socket_ptr_t sock_);
-
+    //! 处理broker同步消息，broker master 会把master上注册的所有信息同步给所有的client
+    int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
     //! 判断是否是master broker
     bool is_master();
 private:
@@ -67,10 +70,11 @@ private:
     string                                  m_broker_host;
     //! 连接到master 的连接socket
     socket_ptr_t                            m_master_broker_sock;
+    //! broker 分配的slave node id
+    uint32_t                                m_node_id;
     timer_service_t                         m_timer;
     //! 用于分配nodeid
     uint32_t                                m_node_id_index;
-    acceptor_i*                             m_acceptor;
     //! 记录所有注册到此节点上的连接
     task_queue_t                            m_tq;
     thread_t                                m_thread;

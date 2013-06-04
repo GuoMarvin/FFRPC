@@ -64,6 +64,7 @@ private:
 
     //!  register all interface
     int register_all_interface(socket_ptr_t sock);
+    //! 处理broker同步消息，broker master 会把master上注册的所有信息同步给所有的client
     int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
     int handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
 
@@ -135,7 +136,7 @@ struct ffrpc_t::broker_client_info_t
 template <typename T>
 int ffrpc_t::call(const string& name_, T& req_, ffslot_t::callback_t* callback_)
 {
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), req_.encode(), callback_));   
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), req_.encode_data(), callback_));   
     return 0;
 }
 

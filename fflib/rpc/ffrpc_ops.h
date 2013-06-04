@@ -64,13 +64,8 @@ public:
 
 class null_type_t: public ffmsg_t<null_type_t>
 {
-    virtual string encode()
-    {
-        return (init_encoder()).get_buff() ;
-    }
-    virtual void decode(const string& src_buff_)
-    {
-    }
+    void encode(){}
+    void decode(){}
 };
 
 template<typename IN, typename OUT = null_type_t>
@@ -87,7 +82,7 @@ struct ffreq_t
     ffresponser_t*  responser;
     void response(OUT& out_)
     {
-        responser->response(node_id, 0, callback_id, out_.encode());
+        responser->response(node_id, 0, callback_id, out_.encode_data());
     }
 };
 
@@ -186,7 +181,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode(msg_data->body);
+            req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
@@ -212,7 +207,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode(msg_data->body);
+            req.arg.decode_data(msg_data->body);
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req);
@@ -241,7 +236,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode(msg_data->body);
+            req.arg.decode_data(msg_data->body);
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1);
@@ -273,7 +268,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode(msg_data->body);
+            req.arg.decode_data(msg_data->body);
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2);
@@ -307,7 +302,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode(msg_data->body);
+            req.arg.decode_data(msg_data->body);
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3);
@@ -342,7 +337,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode(msg_data->body);
+            req.arg.decode_data(msg_data->body);
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3, m_arg4);

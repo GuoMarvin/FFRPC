@@ -28,7 +28,7 @@ public:
     {
         if (socket_ptr_)
         {
-            string body = msg_.encode();
+            string body = msg_.encode_data();
             message_head_t h(cmd_);
             h.size = body.size();
             string dest((const char*)&h, sizeof(h));
@@ -48,7 +48,7 @@ public:
     {
         if (socket_ptr_)
         {
-            string body = msg_.encode();
+            string body = msg_.encode_data();
             message_head_t h(0);
             h.size = body.size();
             string dest((const char*)&h, sizeof(h));

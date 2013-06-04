@@ -13,20 +13,35 @@ using namespace ff;
 
 struct echo_t//!broker 转发消息
 {
+    //! 记录每个broker slave 的接口信息
+    struct slave_broker_info_t: public ffmsg_t<slave_broker_info_t>
+    {
+        void encode()
+        {
+            encoder() << host;
+        }
+        void decode()
+        {
+            decoder() >> host;
+        }
+        string          host;
+    };
+
     struct in_t: public ffmsg_t<in_t>
     {
-        virtual string encode()
+        void encode()
         {
-            return (init_encoder() << node_id << msg_id << callback_id << body).get_buff() ;
+            encoder() << node_id << msg_id << callback_id << body << slave_broker_info;
         }
-        virtual void decode(const string& src_buff_)
+        void decode()
         {
-            init_decoder(src_buff_) >> node_id >> msg_id >> callback_id >> body;
+            decoder() >> node_id >> msg_id >> callback_id >> body >> slave_broker_info;
         }
         uint32_t                    node_id;//! 需要转发到哪个节点上
         uint32_t                    msg_id;//! 调用的是哪个接口
         uint32_t                    callback_id;
         string                      body;
+        vector<slave_broker_info_t>         slave_broker_info;
     };
 };
 
