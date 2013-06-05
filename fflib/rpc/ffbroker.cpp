@@ -52,6 +52,10 @@ int ffbroker_t::open(const string& opt_)
         }
         //! 注册到master broker
     }
+    else//! 内存中注册此broker
+    {
+        singleton_t<ffrpc_memory_route_t>::instance().add_node(BROKER_MASTER_NODE_ID, this);
+    }
     return 0;
 }
 
@@ -274,11 +278,22 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
 //! 转发消息
 int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
+    return route_msg_to_broker_client(msg_);
+}
+//! 转发消息给master client
+int ffbroker_t::route_msg_to_broker_client(broker_route_t::in_t& msg_)
+{
     LOGTRACE((BROKER, "ffbroker_t::handle_route_msg begin"));
-    map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.find(msg_.node_id);
+    if (0 == singleton_t<ffrpc_memory_route_t>::instance().broker_route_to_client(msg_))
+    {
+        LOGTRACE((BROKER, "ffbroker_t::handle_route_msg same process dest_node_id[%u]", msg_.dest_node_id));
+        return 0;
+    }
+
+    map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.find(msg_.dest_node_id);
     if (it == m_broker_client_info.end())
     {
-        LOGERROR((BROKER, "ffbroker_t::handle_route_msg no this node id[%u]", msg_.node_id));
+        LOGERROR((BROKER, "ffbroker_t::handle_route_msg no dest_node_id[%u]", msg_.dest_node_id));
         return -1;
     }
     msg_sender_t::send(it->second.sock, BROKER_TO_CLIENT_MSG, msg_);
@@ -308,6 +323,8 @@ int ffbroker_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t
     if (msg_.node_id != 0)
     {
         m_node_id = msg_.node_id;
+        //! 如果本身是slave，内存中注册本身
+        singleton_t<ffrpc_memory_route_t>::instance().add_node(m_node_id, this);
     }
 
     m_msg2id = msg_.msg2id;

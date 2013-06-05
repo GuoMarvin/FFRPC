@@ -56,6 +56,8 @@ public:
     task_queue_t& get_tq();
     //! 定时重连 broker master
     void timer_reconnect_broker();
+    //! 调用消息对应的回调函数
+    int trigger_callback(broker_route_t::in_t& msg_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -67,6 +69,7 @@ private:
     //! 处理broker同步消息，broker master 会把master上注册的所有信息同步给所有的client
     int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
     int handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
+    
 
     //! 连接到broker master
     socket_ptr_t connect_to_broker(const string& host_, uint32_t node_id_);

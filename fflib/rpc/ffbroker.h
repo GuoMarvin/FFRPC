@@ -46,6 +46,8 @@ public:
     
     //! 连接到broker master
     int connect_to_master_broker();
+    //! 转发消息给master client
+    int route_msg_to_broker_client(broker_route_t::in_t& msg_);
 private:
     //! 当有连接断开，则被回调
     int handle_broken_impl(socket_ptr_t sock_);

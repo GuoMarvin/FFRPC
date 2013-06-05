@@ -49,6 +49,7 @@ int ffrpc_t::open(const string& opt_)
             return -1;
         }
     }
+    singleton_t<ffrpc_memory_route_t>::instance().add_node(m_node_id, this);
     LOGTRACE((FFRPC, "ffrpc_t::open end ok m_node_id[%u]", m_node_id));
     return 0;
 }
@@ -239,7 +240,13 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
 
 int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
-    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u] begin", msg_.msg_id));
+    return trigger_callback(msg_);
+}
+
+//! 调用消息对应的回调函数
+int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
+{
+    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u],callback_id[%u] begin", msg_.msg_id, msg_.callback_id));
     try
     {
         if (msg_.msg_id == 0)//! msg_id 为0表示这是一个回调的消息，callback_id已经有值
@@ -247,10 +254,14 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
             ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
             if (cb)
             {
-                ffslot_req_arg arg(msg_.body, msg_.node_id, msg_.callback_id, this);
+                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, this);
                 cb->exe(&arg);
-                m_ffslot.del(msg_.callback_id);
+                m_ffslot_callback.del(msg_.callback_id);
                 return 0;
+            }
+            else
+            {
+                LOGERROR((FFRPC, "ffrpc_t::handle_broker_route_msg callback_id[%u] not found", msg_.callback_id));
             }
         }
         else//! 表示调用接口
@@ -258,10 +269,14 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
             ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.msg_id);
             if (cb)
             {
-                ffslot_req_arg arg(msg_.body, msg_.node_id, msg_.callback_id, this);
+                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, this);
                 cb->exe(&arg);
                 LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg end ok"));
                 return 0;
+            }
+            else
+            {
+                LOGERROR((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u] not found", msg_.msg_id));
             }
         }
     }
@@ -274,7 +289,7 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
         }
         return -1;
     }
-    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg no register func"));
+    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg end"));
     return 0;
 }
 
@@ -310,10 +325,20 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     uint32_t broker_node_id = broker_client_info.bind_broker_id;
 
     broker_route_t::in_t msg;
-    msg.node_id     = dest_node_id;
+    msg.dest_node_id     = dest_node_id;
+    msg.from_node_id     = m_node_id;
     msg.msg_id      = msg_id_;
     msg.body        = body_;
     msg.callback_id = callback_id_;
+    
+    //!如果在同一个进程内那么，内存转发
+    if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(msg))
+    {
+        LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], broker_node_id[%u], msgid<%u>, callback_id_[%u] same process",
+                        dest_node_id, broker_node_id, msg_id_, callback_id_));
+        return;
+    }
+
     if (broker_node_id == BROKER_MASTER_NODE_ID)
     {
         msg_sender_t::send(m_master_broker_sock, BROKER_ROUTE_MSG, msg);

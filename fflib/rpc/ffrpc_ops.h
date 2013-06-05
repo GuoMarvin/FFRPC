@@ -10,6 +10,7 @@ using namespace std;
 #include "net/socket_i.h"
 #include "base/fftype.h"
 #include "net/codec.h"
+#include "base/singleton.h"
 
 namespace ff
 {
@@ -55,8 +56,8 @@ public:
         return TYPEID(ffslot_req_arg);
     }
     string          body;
-    uint32_t        node_id;
-    uint32_t        callback_id;
+    uint32_t        node_id;//! 请求来自于那个node id
+    uint32_t        callback_id;//! 回调函数标识id
     ffresponser_t*  responser;
 };
 
@@ -88,17 +89,19 @@ struct ffreq_t
 
 struct ffrpc_ops_t
 {
+    //! 接受broker 消息的回调函数
     template <typename R, typename T>
     static ffslot_t::callback_t* gen_callback(R (*)(T&, socket_ptr_t));
     template <typename R, typename CLASS_TYPE, typename T>
     static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*)(T&, socket_ptr_t), CLASS_TYPE* obj_);
     
-    //! 注册接口
+    //! broker client 注册接口
     template <typename R, typename IN, typename OUT>
     static ffslot_t::callback_t* gen_callback(R (*)(ffreq_t<IN, OUT>&));
     template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
     static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj);
 
+    //! ffrpc call接口的回调函数参数
     //! 如果绑定回调函数的时候，有时需要一些临时参数被保存直到回调函数被调用
     template <typename R, typename CLASS_TYPE, typename IN, typename OUT, typename FUNC_ARG1, typename ARG1>
     static ffslot_t::callback_t* gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&, FUNC_ARG1), CLASS_TYPE* obj_, ARG1 arg1_);
@@ -208,6 +211,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode_data(msg_data->body);
+            req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req);
@@ -237,6 +241,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode_data(msg_data->body);
+            req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1);
@@ -269,6 +274,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode_data(msg_data->body);
+            req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2);
@@ -303,6 +309,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode_data(msg_data->body);
+            req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3);
@@ -338,6 +345,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode_data(msg_data->body);
+            req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3, m_arg4);
@@ -352,6 +360,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
     };
     return new lambda_cb(func_, obj_, arg1_, arg2_, arg3_, arg4_);
 }
+
 
 enum ffrpc_cmd_def_e
 {
@@ -474,17 +483,47 @@ struct broker_route_t//!broker 转发消息
     {
         void encode()
         {
-            encoder() << node_id << msg_id << callback_id << body;
+            encoder() << from_node_id << dest_node_id << msg_id << callback_id << body;
         }
         void decode()
         {
-            decoder() >> node_id >> msg_id >> callback_id >> body;
+            decoder() >> from_node_id >> dest_node_id >> msg_id >> callback_id >> body;
         }
-        uint32_t                    node_id;//! 需要转发到哪个节点上
+        uint32_t                    from_node_id;//! 来自哪个节点
+        uint32_t                    dest_node_id;//! 需要转发到哪个节点上
         uint32_t                    msg_id;//! 调用的是哪个接口
         uint32_t                    callback_id;
         string                      body;
     };
+};
+
+//! 用于broker 和 rpc 在内存间投递消息
+class ffrpc_t;
+class ffbroker_t;
+struct ffrpc_memory_route_t
+{
+    struct dest_node_info_t
+    {
+        dest_node_info_t():
+            ffrpc(NULL),
+            ffbroker(NULL)
+        {}
+        ffrpc_t*        ffrpc;
+        ffbroker_t*     ffbroker;
+    };
+    int add_node(uint32_t node_id_, ffrpc_t* ffrpc_);
+    int add_node(uint32_t node_id_, ffbroker_t* ffbroker_);
+    int del_node(uint32_t node_id_);
+
+    //! 判断目标节点是否在同一进程中
+    bool is_same_process(uint32_t node_id_);
+    //! broker 转发消息到rpc client
+    int broker_route_to_client(broker_route_t::in_t& msg_);
+    //! client 转发消息到 broker, 再由broker转发到client
+    int client_route_to_broker(broker_route_t::in_t& msg_);
+
+
+    map<uint32_t/*node id*/, dest_node_info_t>      m_node_info;
 };
 
 }

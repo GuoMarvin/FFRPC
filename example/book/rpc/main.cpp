@@ -54,9 +54,11 @@ struct foo_t
         LOGDEBUG(("XX", "FFFFF %s", req_.arg.body.c_str()));
         req_.response(req_.arg);
     }
-    void echo(ffreq_t<echo_t::in_t>& req_, int& arg1_, const string& arg2_, int* pin, const char* pstr)
+    void echo(ffreq_t<echo_t::in_t, echo_t::in_t>& req_, int& arg1_, const string& arg2_, int* pin, const char* pstr)
     {
         LOGDEBUG(("XX", "%s %s %d %s %d %s", __FUNCTION__, req_.arg.body.c_str(), arg1_, arg2_, *pin, pstr));
+        sleep(1);
+        req_.response(req_.arg);
     }
 };
 
