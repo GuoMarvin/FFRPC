@@ -155,7 +155,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(T&, socke
             }
             ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
             T msg;
-            msg.decode(msg_data->body);
+            msg.decode_data(msg_data->body);
             (m_obj->*(m_func))(msg, msg_data->sock);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj); }
@@ -361,6 +361,130 @@ enum ffrpc_cmd_def_e
     BROKER_SYNC_DATA_MSG,
     BROKER_TO_CLIENT_MSG,
     CLIENT_REGISTER_TO_SLAVE_BROKER,
+};
+
+
+//! 向broker master 注册slave
+struct register_slave_broker_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << host;
+        }
+        void decode()
+        {
+            decoder()>> host;
+        }
+        string          host;
+    };
+};
+
+//! 向broker master 注册client
+struct register_broker_client_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << service_name << bind_broker_id << msg_names;
+        }
+        void decode()
+        {
+            decoder() >> service_name >> bind_broker_id >> msg_names;
+        }
+        string                      service_name;
+        uint32_t                    bind_broker_id;//! 是否需要绑定到特定的broker上
+        std::set<string>            msg_names;
+    };
+};
+//! 向broker slave 注册client
+struct register_client_to_slave_broker_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << node_id;
+        }
+        void decode()
+        {
+            decoder() >> node_id;
+        }
+        uint32_t                    node_id;//! master分配client的node id
+    };
+};
+
+struct broker_sync_all_registered_data_t
+{
+    //! 记录每个broker slave 的接口信息
+    struct slave_broker_info_t: public ffmsg_t<slave_broker_info_t>
+    {
+        void encode()
+        {
+            encoder() << host;
+        }
+        void decode()
+        {
+            decoder() >> host;
+        }
+        string          host;
+    };
+
+    struct broker_client_info_t: public ffmsg_t<broker_client_info_t>
+    {
+        void encode()
+        {
+            encoder() << bind_broker_id << service_name;
+        }
+        void decode()
+        {
+            decoder() >> bind_broker_id >> service_name;
+        }
+        //! 被绑定的节点broker node id
+        uint32_t bind_broker_id;
+        string   service_name;
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        out_t():
+            node_id(0)
+        {}
+        void encode()
+        {
+            encoder() << node_id << msg2id << slave_broker_info << broker_client_info;
+        }
+        void decode()
+        {
+            decoder() >> node_id >> msg2id >> slave_broker_info >> broker_client_info;
+        }
+        uint32_t                                node_id;//! 被分配的node id
+        map<string, uint32_t>                   msg2id; //! 消息名称对应的消息id 值
+        //!记录所有的broker slave 信息
+        map<uint32_t, slave_broker_info_t>      slave_broker_info;//! node id -> broker slave
+        //! 记录所有服务/接口信息
+        map<uint32_t, broker_client_info_t>     broker_client_info;//! node id -> service
+    };
+};
+
+struct broker_route_t//!broker 转发消息
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << node_id << msg_id << callback_id << body;
+        }
+        void decode()
+        {
+            decoder() >> node_id >> msg_id >> callback_id >> body;
+        }
+        uint32_t                    node_id;//! 需要转发到哪个节点上
+        uint32_t                    msg_id;//! 调用的是哪个接口
+        uint32_t                    callback_id;
+        string                      body;
+    };
 };
 
 }

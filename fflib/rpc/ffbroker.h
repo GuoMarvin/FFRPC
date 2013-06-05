@@ -11,10 +11,10 @@ using namespace std;
 #include "net/msg_handler_i.h"
 #include "base/task_queue_impl.h"
 #include "base/ffslot.h"
-#include "net/codec.h"
 #include "base/thread.h"
 #include "base/smart_ptr.h"
 #include "net/net_factory.h"
+#include "rpc/ffrpc_ops.h"
 
 namespace ff
 {

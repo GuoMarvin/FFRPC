@@ -1,5 +1,4 @@
 #include "rpc/ffbroker.h"
-#include "rpc/ffrpc_ops.h"
 #include "base/log.h"
 #include "base/arg_helper.h"
 
@@ -266,7 +265,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
         msg_sender_t::send(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
-        LOGTRACE((BROKER, "ffbroker_t::handle_client_register to node_id[%u]", msg.node_id));
+        LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info to node_id[%u]", msg.node_id));
     }
     LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info end ok"));
     return 0;
