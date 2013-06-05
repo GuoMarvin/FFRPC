@@ -154,7 +154,7 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
 int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 {
     uint16_t cmd = msg_.get_cmd();
-    LOGERROR((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> begin", cmd));
+    LOGTRACE((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> begin", cmd));
 
     ffslot_t::callback_t* cb = m_ffslot.get_callback(cmd);
     if (cb)
@@ -163,7 +163,7 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
         {
             ffslot_msg_arg arg(msg_.get_body(), sock_);
             cb->exe(&arg);
-            LOGERROR((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> end ok", cmd));
+            LOGTRACE((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> end ok", cmd));
             return 0;
         }
         catch(exception& e_)

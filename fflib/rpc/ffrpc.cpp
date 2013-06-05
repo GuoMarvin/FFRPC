@@ -184,7 +184,7 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
         }
         catch(exception& e_)
         {
-            LOGERROR((BROKER, "ffbroker_t::handle_msg_impl exception<%s>", e_.what()));
+            LOGERROR((BROKER, "ffrpc_t::handle_msg_impl exception<%s>", e_.what()));
             return -1;
         }
     }
