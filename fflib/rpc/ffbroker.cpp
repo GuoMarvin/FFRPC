@@ -194,19 +194,21 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_client_register begin"));
 
-    for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
-         it != m_broker_client_info.end(); ++it)
+    if (msg_.service_name.empty() == false)
     {
-        broker_client_info_t& broker_client_info = it->second;
-        if (broker_client_info.service_name == msg_.service_name)
+        for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
+             it != m_broker_client_info.end(); ++it)
         {
-            sock_->close();
-            LOGTRACE((BROKER, "ffbroker_t::handle_client_register service<%s> has been registed",
-                                msg_.service_name.c_str()));
-            return -1;
+            broker_client_info_t& broker_client_info = it->second;
+            if (broker_client_info.service_name == msg_.service_name)
+            {
+                sock_->close();
+                LOGTRACE((BROKER, "ffbroker_t::handle_client_register service<%s> has been registed",
+                                    msg_.service_name.c_str()));
+                return -1;
+            }
         }
     }
-
     session_data_t* psession = new session_data_t(alloc_id());
     sock_->set_data(psession);
 

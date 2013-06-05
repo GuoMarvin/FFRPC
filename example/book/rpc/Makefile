@@ -15,9 +15,9 @@ ARCH=
 BIN=app_rpc
 
 #源文件目录
-SrcDir= .  ../../../fflib/db ../../../fflib/base ../../../fflib/net ../../../fflib/rpc
+SrcDir= . ../../../fflib/base ../../../fflib/net ../../../fflib/rpc
 #头文件目录
-IncDir=  ../../../fflib/  ../../../fflib/ext 
+IncDir=  ../../../fflib/ 
 #连接库目录
 LibDir= /usr/local/lib
 SRCS=$(foreach dir,$(SrcDir),$(wildcard $(dir)/*.cpp))
@@ -33,8 +33,7 @@ OBJS = $(SRCS:%.cpp=%.o)
 
 all:$(BIN)
 $(BIN):$(OBJS)
-	gcc -c ../../../fflib/db/sqlite3.c -o sqlite3.o
-	g++ -o $(BIN) $(OBJS) sqlite3.o $(LDFLAGS) 
+	g++ -o $(BIN) $(OBJS)  $(LDFLAGS) 
 	@echo -e " OK!\tComplie $@ "
 # @$(LN) $(shell pwd)/$(LIB_NAME).$(LIB_VER) /lib/$(LIB_NAME)
 

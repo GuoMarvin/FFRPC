@@ -25,7 +25,7 @@ class ffrpc_t: public msg_handler_i, ffresponser_t
     struct slave_broker_info_t;
     struct broker_client_info_t;
 public:
-    ffrpc_t(const string& service_name_);
+    ffrpc_t(string service_name_ = "");
     virtual ~ffrpc_t();
 
     int open(const string& opt_);

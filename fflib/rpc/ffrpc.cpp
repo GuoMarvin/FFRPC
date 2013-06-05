@@ -7,7 +7,7 @@ using namespace ff;
 
 #define FFRPC                   "FFRPC"
 
-ffrpc_t::ffrpc_t(const string& service_name_):
+ffrpc_t::ffrpc_t(string service_name_):
     m_service_name(service_name_),
     m_node_id(0),
     m_bind_broker_id(0),
@@ -26,7 +26,7 @@ int ffrpc_t::open(const string& opt_)
 {
     arg_helper_t arg(opt_);
     net_factory_t::start(1);
-    m_host = arg.get_option_value("-l");
+    m_host = arg.get_option_value("-broker");
 
     m_ffslot.bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_CLIENT_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_route_msg, this));
