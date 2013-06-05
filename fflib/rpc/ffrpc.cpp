@@ -10,7 +10,6 @@ using namespace ff;
 ffrpc_t::ffrpc_t(string service_name_):
     m_service_name(service_name_),
     m_node_id(0),
-    m_bind_broker_id(0),
     m_callback_id(0),
     m_master_broker_sock(NULL)
 {
@@ -105,7 +104,6 @@ int ffrpc_t::register_all_interface(socket_ptr_t sock)
 {
     register_broker_client_t::in_t msg;
     msg.service_name = m_service_name;
-    msg.bind_broker_id = m_bind_broker_id;
     
     for (map<string, ffslot_t::callback_t*>::iterator it = m_reg_iterface.begin(); it != m_reg_iterface.end(); ++it)
     {

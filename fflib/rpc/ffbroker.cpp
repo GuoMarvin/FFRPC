@@ -5,6 +5,7 @@
 using namespace ff;
 
 ffbroker_t::ffbroker_t():
+    m_alloc_slave_broker_index(0),
     m_master_broker_sock(NULL),
     m_node_id_index(0)
 {
@@ -215,7 +216,7 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
     LOGTRACE((BROKER, "ffbroker_t::handle_client_register alloc node id<%u>", psession->get_node_id()));
 
     broker_client_info_t& broker_client_info = m_broker_client_info[psession->get_node_id()];
-    broker_client_info.bind_broker_id        = msg_.bind_broker_id;
+    broker_client_info.bind_broker_id        = alloc_broker_id();
     broker_client_info.service_name          = msg_.service_name;
     broker_client_info.sock                  = sock_;
 
@@ -231,6 +232,36 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
     sync_all_register_info(sock_);
     LOGTRACE((BROKER, "ffbroker_t::handle_client_register end ok"));
     return 0;
+}
+//! 分配一个broker 给client,以后client的消息都通过此broker转发
+uint32_t ffbroker_t::alloc_broker_id()
+{
+    //! 若本进程内有broker 那么直接分配本进程的
+    vector<uint32_t> same_process_nodes = singleton_t<ffrpc_memory_route_t>::instance().get_node_same_process();
+    for (vector<uint32_t>::iterator it = same_process_nodes.begin(); it != same_process_nodes.end(); ++it)
+    {
+        if (m_slave_broker_sockets.find(*it) != m_slave_broker_sockets.end())//! 必须确定是slave broker
+        {
+            return *it;
+        }
+    }
+
+    if (false == m_slave_broker_sockets.empty())
+    {
+        uint32_t index = m_alloc_slave_broker_index++;
+        index = index % m_slave_broker_sockets.size();
+        //! 分配一个broker slave，如果有的话
+        map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();
+        for (uint32_t i = 0; it != m_slave_broker_sockets.end(); ++it)
+        {
+            if (i >= index)
+            {
+                return it->first; 
+            }
+            ++i;
+        }
+    }
+    return BROKER_MASTER_NODE_ID;
 }
 
 //! 同步所有的当前的注册接口信息

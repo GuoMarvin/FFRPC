@@ -67,7 +67,11 @@ private:
     int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
     //! 判断是否是master broker
     bool is_master();
+    //! 分配一个broker 给client,以后client的消息都通过此broker转发
+    uint32_t alloc_broker_id();
 private:
+    //! 分配broker slave的索引id
+    uint32_t                                m_alloc_slave_broker_index;
     //!broker master 的host信息
     string                                  m_broker_host;
     //! 连接到master 的连接socket

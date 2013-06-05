@@ -79,7 +79,6 @@ private:
     timer_service_t                         m_timer;
     string                                  m_service_name;//! 注册的服务名称
     uint32_t                                m_node_id;     //! 通过注册broker，分配的node id
-    uint32_t                                m_bind_broker_id;//! 若不为0， 则为固定绑定一个node id
     uint32_t                                m_callback_id;//! 回调函数的唯一id值
     task_queue_t                            m_tq;
     thread_t                                m_thread;
