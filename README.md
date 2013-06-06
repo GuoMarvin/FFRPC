@@ -34,7 +34,7 @@ FFRPC 已经陆陆续续开发了1年，6月6日这天终于完成了我比较�
 ## 示例代码
 
 ``` c++
-	#include <stdio.h>
+#include <stdio.h>
 #include "base/daemon_tool.h"
 #include "base/arg_helper.h"
 #include "base/strtool.h"
