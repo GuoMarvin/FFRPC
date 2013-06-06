@@ -34,14 +34,14 @@ OBJS = $(SRCS:%.cpp=%.o)
 all:$(BIN)
 $(BIN):$(OBJS)
 	g++ -o $(BIN) $(OBJS)  $(LDFLAGS) 
-	@echo -e " OK!\tComplie $@ "
+	@echo -e " OK!\tCompile $@ "
 # @$(LN) $(shell pwd)/$(LIB_NAME).$(LIB_VER) /lib/$(LIB_NAME)
 
 %.o:%.cpp
-	@echo -e "[$(ARCH)] \t\tCompileing $@..."
+	@echo -e "[$(ARCH)] \t\tCompile $@..."
 	@$(CC) $(CFLAGS)  -c $< -o $@
 
 .PHONY: clean
 clean:
 	@echo -e "[$(ARCH)] \tCleaning files..."
-	@$(RM) $(OBJS) $(BIN) sqlite3.o
+	@$(RM) $(OBJS) $(BIN) 
