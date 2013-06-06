@@ -133,6 +133,6 @@ int main(int argc, char* argv[])
 ## 总结
 * ffrpc中broker、client、service可以启动在不同的进程，如果在同一进程，那么直接内存间投递消息
 * ffrpc 每个实例单独启动一个线程和任务队列，保证service和client的操作都是有序、线程安全的。
-* 如果你研究过protobuff、thrift、zeromq等等类库/框架, 更要试用一下ffrpc。
+* 如果你研究过protobuff、thrift、zeromq、ice等等类库/框架, 更要试用一下ffrpc。
 
 
