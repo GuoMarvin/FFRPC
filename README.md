@@ -7,13 +7,12 @@ FFRPC 已经陆陆续续开发了1年，6月6日这天终于完成了我比较�
 ## FFRPC 主要特性
  * FFRPC 采用Epoll Edge Trigger模式，这里特别提一下ET是因为在异步工作模式，ET方式才是epoll最简单也是最高效的方式
  网上的很多帖子写LT简单易用，那纯碎是没有理解ET的精髓之所在，如果读者想要从ffrpc中探究一下ET的奥妙，提醒读者的是
- 请把Epoll 看成一个状态机！
- * FFRPC 采用Broker模式，这样的好处是 Scalability!! 在游戏领域的开发者一定很熟悉Master/Gateway/Logic Server的概念，
- * 实际上Master 实际上扮演的Broker master的角色，而gateway扮演的是Broker slave的角色，Broker Slave负责转发客户端的
- * 请求到Logic Service，提供一个转发层虽然会增加延迟，但是系统变得可扩展，大大提高了吞吐量，这就是Scalability!! 
- * 而Broker master负责管理所有的Master Slave，负责负载均衡。不同的client分配不同的Broker SLave。
+ 请把Epoll 看成一个状态机！FFRPC 采用Broker模式，这样的好处是 Scalability!! 在游戏领域的开发者一定很熟悉Master/Gateway/Logic Server的概念，
+ 实际上Master 实际上扮演的Broker master的角色，而gateway扮演的是Broker slave的角色，Broker Slave负责转发客户端的
+ 请求到Logic Service，提供一个转发层虽然会增加延迟，但是系统变得可扩展，大大提高了吞吐量，这就是Scalability!! 
+ 而Broker master负责管理所有的Master Slave，负责负载均衡。不同的client分配不同的Broker SLave。
  * FFRPC 就是基于以上的思路，有如下四个关键的概念：
- * 一：broker master 负责负载均衡，同步所有节点的信息，所有的slave broker和rpc service/ rpc cleint都要连接broker master。
+ 	* 一：broker master 负责负载均衡，同步所有节点的信息，所有的slave broker和rpc service/ rpc cleint都要连接broker master。
  * 二：slave broker负责完成service和client间转发消息，如果service、client和broker在同一进程，那么直接在内存间投递消息，
  * 这是v0。2的重要的优化，v0。1时没有此功能，网友很多反应这个问题，看来大伙对优化还是太敏感！
  * 另一个创新之处在于ffmsg_t，封装了消息的序列化和反序列化，我已经厌倦了protobuff，如果你也研究了为每个消息定义cmd
