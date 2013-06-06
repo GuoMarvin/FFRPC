@@ -146,6 +146,12 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
         m_slave_broker_sockets.erase(node_id);
         m_broker_client_info.erase(node_id);
     }
+
+    if (is_master())
+    {
+        //! 如果是master， //!如果是slave broker断开连接，需要为原来的service重新分配slave broker
+        sync_all_register_info(NULL);
+    }
     delete sock_->get_data<session_data_t>();
     sock_->set_data(NULL);
     sock_->safe_delete();
@@ -273,7 +279,13 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
     for (map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();
          it != m_broker_client_info.end(); ++it)
     {
-        msg.broker_client_info[it->first].bind_broker_id      = it->second.bind_broker_id;
+        //!在取值之前，要检测一下对应的broker node id，是否存在，若已经失效，则重新分配一个
+        uint32_t& bind_broker_node_id = it->second.bind_broker_id;
+        if (is_master() && m_slave_broker_sockets.find(bind_broker_node_id) == m_slave_broker_sockets.end())
+        {
+            bind_broker_node_id = alloc_broker_id();
+        }
+        msg.broker_client_info[it->first].bind_broker_id      = bind_broker_node_id;
         msg.broker_client_info[it->first].service_name        = it->second.service_name;
     }
     //! 把所有已注册的broker slave节点赋值到消息
