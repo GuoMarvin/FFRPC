@@ -78,6 +78,9 @@ int main(int argc, char* argv[])
     ffrpc_client.open("app -broker tcp://127.0.0.1:10241");
     echo_t::in_t in;
     in.data = "helloworld";
+
+    //! 你没有看见get_type_name定义，但是他确定存在
+    printf("测试获取类名:%s\n", in.get_type_name());//输出为:测试获取类名:echo_t::in_t
     
     for (int i = 0; i < 100; ++i)
     {
